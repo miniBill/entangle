@@ -1,0 +1,17 @@
+name: entangle
+version: 0.1
+cabal-version: >=1.2
+build-type: Simple
+license: AllRightsReserved
+license-file: COPYRIGHT
+description:  
+data-dir: ""
+ 
+executable entangle
+    build-depends: QuickCheck -any, base -any, containers -any,
+                   directory -any, easyrender -any, mtl -any, process -any,
+                   template-haskell -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+ 

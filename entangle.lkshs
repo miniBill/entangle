@@ -1,0 +1,18 @@
+Version of session file format:
+               1
+Time of storage:
+               "Sat Sep 26 15:25:46 CEST 2015"
+Layout:        VerticalP (TerminalP {paneGroups = fromList [], paneTabs = Just TopP, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) (VerticalP (HorizontalP (TerminalP {paneGroups = fromList [("Browser",HorizontalP (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) (HorizontalP (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) (TerminalP {paneGroups = fromList [], paneTabs = Nothing, currentPage = 0, detachedId = Nothing, detachedSize = Nothing}) 377) 160)], paneTabs = Just TopP, currentPage = 3, detachedId = Nothing, detachedSize = Nothing}) (TerminalP {paneGroups = fromList [], paneTabs = Just TopP, currentPage = -1, detachedId = Nothing, detachedSize = Nothing}) 900) (TerminalP {paneGroups = fromList [], paneTabs = Just TopP, currentPage = -1, detachedId = Nothing, detachedSize = Nothing}) 957) 945
+Population:    [(Just (ErrorsSt ErrorsState),[SplitP RightP,SplitP LeftP,SplitP TopP]),(Just (FilesSt FilesState),[SplitP RightP,SplitP LeftP,SplitP TopP]),(Just (InfoSt (InfoState Nothing)),[SplitP RightP,SplitP LeftP,SplitP TopP,GroupP "Browser",SplitP BottomP,SplitP BottomP]),(Just (LogSt LogState),[SplitP RightP,SplitP LeftP,SplitP TopP]),(Just (BufferSt (BufferState "/home/leonardo/src/entangle/src/Main.hs" 2036)),[SplitP LeftP]),(Just (ModulesSt (ModulesState 235 (SystemScope,False) (Nothing,Nothing) (ExpanderState {packageExp = ([],[]), packageExpNoBlack = ([],[]), packageDExp = ([],[]), packageDExpNoBlack = ([],[]), workspaceExp = ([],[]), workspaceExpNoBlack = ([],[]), workspaceDExp = ([],[]), workspaceDExpNoBlack = ([],[]), systemExp = ([],[]), systemExpNoBlack = ([],[])}))),[SplitP RightP,SplitP LeftP,SplitP TopP,GroupP "Browser",SplitP BottomP,SplitP TopP]),(Just (SearchSt (SearchState {searchString = "Namespace", searchScope = SystemScope, searchMode = Exact {caseSense = False}})),[SplitP RightP,SplitP LeftP,SplitP TopP]),(Just (WorkspaceSt WorkspaceState),[SplitP RightP,SplitP LeftP,SplitP TopP,GroupP "Browser",SplitP TopP])]
+Window size:   (1920,1009)
+Completion size:
+               (750,400)
+Workspace:     Just "/home/leonardo/src/entangle/entangle.lkshw"
+Active pane:   Just "Main.hs"
+Toolbar visible:
+               True
+FindbarState:  (False,FindState {entryStr = "asdasdasdasd", entryHist = ["asdasdasdasd","Namespace","TypedSub","State","ReadWrite","main","fromInte","r","fail","Invalid assi","invalid a","param"], replaceStr = "SubInferU", replaceHist = [], caseSensitive = True, entireWord = False, wrapAround = True, regex = False, lineNr = 1})
+Recently opened files:
+               ["/home/leonardo/src/entangle/src/Quipper/Monad.hs","/home/leonardo/src/entangle/src/Quipper/Circuit.hs","/home/leonardo/src/entangle/src/Quipper/Generic.hs","/home/leonardo/src/entangle/src/Quipper/Internal.hs","/home/leonardo/src/entangle/entangle.cabal","/home/leonardo/src/entangle/entangle/src/Main.hs","/home/leonardo/src/entangle/quipper-0.7/src/Quipper.hs","/home/leonardo/src/entangle/quipper-0.7/quipper.cabal","/home/leonardo/src/entangle/quipper-0.7/src/Quipper/Generic.hs","/home/leonardo/src/entangle/quipper-0.7/src/Libraries/Template/ErrorMsgQ.hs","/home/leonardo/src/entangle/quipper-0.7/quipper/Quipper.hs","/home/leonardo/src/entangle/quipper-0.7/src/Quipper/Printing.hs"]
+Recently opened workspaces:
+               ["/home/leonardo/src/entangle/entangle.lkshw","/home/leonardo/src/MePlot/MePlot.lkshw","/home/leonardo/src/vilya/vilya.lkshw","/home/leonardo/src/lc2/third.lkshw","/home/leonardo/leksah.lkshw"]

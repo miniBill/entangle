@@ -1,0 +1,10 @@
+Version of workspace file format:
+               1
+Time of storage:
+               "Sat Sep 26 11:24:05 CEST 2015"
+Name of the workspace:
+               "entangle"
+File paths of contained packages:
+               ["entangle.cabal"]
+Maybe file path of an active package:
+               Just "entangle.cabal"
