@@ -4,7 +4,6 @@ cabal-version: >=1.2
 build-type: Simple
 license: AllRightsReserved
 license-file: COPYRIGHT
-description:  
 data-dir: ""
  
 executable entangle
@@ -14,4 +13,5 @@ executable entangle
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
+    other-modules: QMonad.MC QMonad.Quipper QMonad
  
