@@ -28,7 +28,7 @@ class (Monad m) => QMonad m where
     umbed :: Qubit m -> EQubit m
     hadamard :: Qubit m -> m (Qubit m)
     qnot :: Qubit m -> m (Qubit m)
-    controlled :: m a -> [Qubit m] -> m a
+    controlled :: m (Qubit m) -> [Qubit m] -> m (Qubit m)
     with_ancilla :: (Qubit m -> m a) -> m a
     with_controls :: ControlList m -> m a -> m a
     (.==.) :: Qubit m -> Bool -> ControlList m

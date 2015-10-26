@@ -81,5 +81,5 @@ example'' :: QM -> QM -> QM -> QM -> QM -> MC (QM, QM, QM, QM, QM)
 example'' = lift5 example
 
 main = do
-    print $ simple (sc 1) -- example'' (sc 0) (sc 1) (sc 2) (sc 3) (sc 4)
-    Q.print_simple Q.Preview simple'
+    print $ example'' (sc 1) (sc 2) (sc 3) (sc 4) (sc 5)
+    Q.print_simple Q.Preview example'

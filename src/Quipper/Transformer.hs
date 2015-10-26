@@ -1,8 +1,4 @@
--- This file is part of Quipper. Copyright (C) 2011-2014. Please see the
--- file COPYRIGHT for a list of authors, copyright holders, licensing,
--- and other details. All rights reserved.
--- 
--- ======================================================================
+
 
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -10,42 +6,42 @@
 
 -- | This module provides functions for defining general-purpose
 -- transformations on low-level circuits. The uses of this include:
--- 
+--
 -- * gate transformations, where a whole circuit is transformed by
 -- replacing each kind of gate with another gate or circuit;
--- 
+--
 -- * error correcting codes, where a whole circuit is transformed
 -- replacing each qubit by some fixed number of qubits, and each gate
 -- by a circuit; and
--- 
+--
 -- * simulations, where a whole circuit is mapped to a semantic
 -- function by specifying a semantic function for each gate.
--- 
+--
 -- The interface is designed to allow the programmer to specify new
 -- transformers easily. To define a specific transformation, the
 -- programmer has to specify only four pieces of information:
--- 
+--
 -- * A type /a/=⟦Qubit⟧, to serve as a semantic domain for qubits.
--- 
+--
 -- * A type /b/=⟦Bit⟧, to serve as a semantic domain for bits.
--- 
+--
 -- * A monad /m/. This is to allow translations to have side effects
 -- if desired; one can use the identity monad otherwise.
--- 
+--
 -- * For every gate /G/, a corresponding semantic function ⟦/G/⟧.  The
 -- type of this function depends on what kind of gate /G/ is. For example:
--- 
+--
 -- @
--- If /G/ :: Qubit -> Circ Qubit, then ⟦/G/⟧ :: /a/ -> /m/ /a/. 
+-- If /G/ :: Qubit -> Circ Qubit, then ⟦/G/⟧ :: /a/ -> /m/ /a/.
 -- If /G/ :: (Qubit, Bit) -> Circ (Bit, Bit), then ⟦/G/⟧ :: (/a/, /b/) -> /m/ (/b/, /b/).
--- @ 
--- 
+-- @
+--
 -- The programmer provides this information by defining a function of
 -- type 'Transformer' /m/ /a/ /b/. See <#Transformers> below.  Once a
 -- particular transformer has been defined, it can then be applied to
 -- entire circuits. For example, for a circuit with 1 inputs and 2
 -- outputs:
--- 
+--
 -- @
 -- If /C/ :: Qubit -> (Bit, Qubit), then ⟦/C/⟧ :: /a/ -> /m/ (/b/, /a/).
 -- @
@@ -54,8 +50,8 @@
 -- Grammar note for developers: a "transformer" does a
 -- "transformation" by "transforming" gates. We use "transform" as a
 -- verb, "transformation" to describe the process of transforming, and
--- "transformer" for the code that describes or does the transformation. 
--- 
+-- "transformer" for the code that describes or does the transformation.
+--
 -- I had initially used the words "iteration", "translation",
 -- "transform", "transformation", "interpretation", and "semantics"
 -- interchangeably, which was a huge linguistic mess.
@@ -76,21 +72,21 @@ import Data.Typeable
 
 -- ======================================================================
 -- * An example transformer
--- 
+--
 -- $EXAMPLE
--- 
+--
 -- The following is a short but complete example of how to write and
 -- use a simple transformer. As usual, we start by importing Quipper:
--- 
+--
 -- > import Quipper
--- 
+--
 -- We will write a transformer called @sample_transformer@, which maps
 -- every swap gate to a sequence of three controlled-not gates, and
 -- leaves all other gates unchanged. For convenience, Quipper
 -- pre-defines an 'identity_transformer', which can be used as a
 -- catch-all clause to take care of all the gates that don't need to
 -- be rewritten.
--- 
+--
 -- > mytransformer :: Transformer Circ Qubit Bit
 -- > mytransformer (T_QGate "swap" 2 0 _ ncf f) = f $
 -- >   \[q0, q1] [] ctrls -> do
@@ -101,29 +97,29 @@ import Data.Typeable
 -- >         qnot_at q0 `controlled` q1
 -- >         return ([q0, q1], [], ctrls)
 -- > mytransformer g = identity_transformer g
--- 
+--
 -- Note how Quipper syntax has been used to define the replacement
 -- circuit, consisting of three controlled-not gates. Also, since the
 -- original swap gate may have been controlled, we have added the
 -- additional controls with a 'with_controls' operator.
--- 
+--
 -- To try this out, we define some random circuit using swap gates:
--- 
+--
 -- > mycirc a b c d = do
 -- >   swap_at a b
 -- >   hadamard_at b
 -- >   swap_at b c `controlled` [a, d]
 -- >   hadamard_at c
 -- >   swap_at c d
--- 
+--
 -- To apply the transformer to this circuit, we use the generic
 -- operator 'transform_generic':
--- 
+--
 -- > mycirc2 = transform_generic mytransformer mycirc
--- 
+--
 -- Finally, we use a @main@ function to display the original circuit
 -- and then the transformed one:
--- 
+--
 -- > main = do
 -- >   print_simple Preview mycirc
 -- >   print_simple Preview mycirc2
@@ -132,12 +128,12 @@ import Data.Typeable
 -- * Bindings
 
 -- $bindings
--- 
+--
 -- We introduce the notion of a /binding/ as a low-level way to
 -- describe functions of varying arities. A binding assigns a value to
 -- a wire in a circuit (much like a \"valuation\" in logic or semantics
--- assigns values to variables). 
--- 
+-- assigns values to variables).
+--
 -- To iterate through a circuit, one will typically specify initial
 -- bindings for the input wires. This encodes the input of the function
 -- ⟦/C/⟧ mentioned in the introduction. The bindings are updated as
@@ -181,7 +177,7 @@ bind_qubit_wire r x bindings = bind r (Endpoint_Qubit x) bindings
 bind_bit_wire :: Wire -> b -> Bindings a b -> Bindings a b
 bind_bit_wire r x bindings = bind r (Endpoint_Bit x) bindings
 
--- | Retrieve the value of a wire from the given bindings. 
+-- | Retrieve the value of a wire from the given bindings.
 unbind :: Bindings a b -> Wire -> B_Endpoint a b
 unbind bindings w = case Map.lookup w bindings of
        Nothing -> error ("unbind: wire (" ++ show w ++ ") not in bindings: " ++ show (wires_of_bindings bindings))
@@ -190,7 +186,7 @@ unbind bindings w = case Map.lookup w bindings of
 -- | Retrieve the value of a qubit wire from the given bindings.
 -- Throws an error if the wire was bound to a classical bit.
 unbind_qubit_wire :: Bindings a b -> Wire -> a
-unbind_qubit_wire bindings w = 
+unbind_qubit_wire bindings w =
   case unbind bindings w of
     Endpoint_Qubit x -> x
     Endpoint_Bit x -> error "Transformer error: expected a qubit, got a bit"
@@ -198,7 +194,7 @@ unbind_qubit_wire bindings w =
 -- | Retrieve the value of a bit wire from the given bindings.
 -- Throws an error if the wire was bound to a qubit.
 unbind_bit_wire :: Bindings a b -> Wire -> b
-unbind_bit_wire bindings w = 
+unbind_bit_wire bindings w =
   case unbind bindings w of
     Endpoint_Bit x -> x
     Endpoint_Qubit x -> error "Transformer error: expected a bit, got a qubit"
@@ -212,19 +208,19 @@ bind_delete r bindings = Map.delete r bindings
 bind_list :: [Wire] -> [B_Endpoint a b] -> Bindings a b -> Bindings a b
 bind_list ws xs bindings =
   foldr (\ (w, x) -> bind w x) bindings (zip ws xs)
-    
+
 -- | Like 'bind_qubit_wire', except bind a list of qubit wires to a list of
 -- values. The lists must be of the same length.
 bind_qubit_wire_list :: [Wire] -> [a] -> Bindings a b -> Bindings a b
 bind_qubit_wire_list ws xs bindings =
   foldr (\ (w, x) -> bind_qubit_wire w x) bindings (zip ws xs)
-    
+
 -- | Like 'bind_bit_wire', except bind a list of bit wires to a list of
 -- values. The lists must be of the same length.
 bind_bit_wire_list :: [Wire] -> [b] -> Bindings a b -> Bindings a b
 bind_bit_wire_list ws xs bindings =
   foldr (\ (w, x) -> bind_bit_wire w x) bindings (zip ws xs)
-    
+
 -- | Like 'unbind', except retrieve a list of values.
 unbind_list :: Bindings a b -> [Wire] -> [B_Endpoint a b]
 unbind_list bindings ws =
@@ -234,12 +230,12 @@ unbind_list bindings ws =
 unbind_qubit_wire_list :: Bindings a b -> [Wire] -> [a]
 unbind_qubit_wire_list bindings ws =
   map (unbind_qubit_wire bindings) ws
-    
+
 -- | Like 'unbind_bit_wire', except retrieve a list of values.
 unbind_bit_wire_list :: Bindings a b -> [Wire] -> [b]
 unbind_bit_wire_list bindings ws =
   map (unbind_bit_wire bindings) ws
-    
+
 -- | A list of signed values of type ⟦Endpoint⟧. This type is an
 -- abbreviation defined for convenience.
 type Ctrls a b = [Signed (B_Endpoint a b)]
@@ -262,7 +258,7 @@ unbind_controls bindings c =
 -- * Transformers
 
 -- $transformers
--- 
+--
 -- The types 'T_Gate' and 'Transformer' are at the heart of the
 -- circuit transformer functionality. Their purpose is to give a
 -- concise syntax in which to express semantic functions for gates. As
@@ -270,24 +266,24 @@ unbind_controls bindings c =
 -- type /a/ and /b/, a monad /m/, and a semantic function for each
 -- gate.  With the T_Gate' and 'Transformer' types, the definition
 -- takes the following form:
--- 
+--
 -- > my_transformer :: Transformer m a b
 -- > my_transformer (T_Gate1 <parameters> f) = f $ <semantic function for gate 1>
 -- > my_transformer (T_Gate2 <parameters> f) = f $ <semantic function for gate 2>
 -- > my_transformer (T_Gate3 <parameters> f) = f $ <semantic function for gate 3>
 -- > ...
--- 
+--
 -- The type 'T_Gate' is very higher-order, involving a function /f/
 -- that consumes the semantic function for each gate. The reason for
 -- this higher-orderness is that the semantic functions for different
--- gates may have different types. 
--- 
+-- gates may have different types.
+--
 -- This higher-orderness makes the 'T_Gate' mechanism hard to read,
 -- but easy to use. Effectively we only have to write lengthy and
 -- messy code once and for all, rather than once for each transformer.
 -- In particular, all the required low-level bindings and unbindings
 -- can be handled by general-purpose code, and do not need to clutter
--- each transformer. 
+-- each transformer.
 
 -- | The type 'T_Gate' is used to define case distinctions over gates
 -- in the definition of transformers. For each kind of gate /X/, it
@@ -299,7 +295,7 @@ unbind_controls bindings c =
 -- variants of this type: one that is specialized to the "simple"
 -- case, where the semantics functions are assumed not to modify the
 -- controls; another that is specialized to m = Id. This would make
--- the definition of most circuit transformers look less cluttered. 
+-- the definition of most circuit transformers look less cluttered.
 
 data T_Gate m a b x =
   T_QGate      String Int Int InverseFlag NoControlFlag (([a] -> [a] -> Ctrls a b -> m ([a], [a], Ctrls a b)) -> x)
@@ -349,7 +345,7 @@ instance Show (T_Gate m a b x) where
 -- 'Transformer' /m/ /a/ /b/. This involves specifying a monad /m/,
 -- semantic domains /a/=⟦Qubit⟧ and /b/=⟦Bit⟧, and a semantic function
 -- for each gate, like this:
--- 
+--
 -- > my_transformer :: Transformer m a b
 -- > my_transformer (T_Gate1 <parameters> f) = f $ <semantic function for gate 1>
 -- > my_transformer (T_Gate2 <parameters> f) = f $ <semantic function for gate 2>
@@ -390,7 +386,7 @@ bind_gate namespace gate = case gate of
       n = length ws
       m = length vs
   GPhase t w c ncf         -> T_GPhase t ncf (phase_ary w c)
-  CNot w c ncf             -> T_CNot ncf (cunary w c)  
+  CNot w c ncf             -> T_CNot ncf (cunary w c)
   CGate n w vs ncf         -> T_CGate n ncf (cgate_ary w vs)
   CGateInv n w vs ncf      -> T_CGateInv n ncf (cgateinv_ary w vs)
   CSwap w v c ncf          -> T_CSwap ncf (binary_c w v c)
@@ -417,7 +413,7 @@ bind_gate namespace gate = case gate of
       let bindings1 = bind_qubit_wire w w'' bindings
       let bindings2 = bind_controls c c'' bindings1
       return bindings2
-    
+
     binary :: Monad m => Wire -> Wire -> Controls -> (a -> a -> Ctrls a b -> m (a, a, Ctrls a b)) -> BT m a b
     binary w v c f bindings = do
       let w' = unbind_qubit_wire bindings w
@@ -428,7 +424,7 @@ bind_gate namespace gate = case gate of
       let bindings2 = bind_qubit_wire v v'' bindings1
       let bindings3 = bind_controls c c'' bindings2
       return bindings3
-    
+
     binary_c :: Monad m => Wire -> Wire -> Controls -> (b -> b -> Ctrls a b -> m (b, b, Ctrls a b)) -> BT m a b
     binary_c w v c f bindings = do
       let w' = unbind_bit_wire bindings w
@@ -439,7 +435,7 @@ bind_gate namespace gate = case gate of
       let bindings2 = bind_bit_wire v v'' bindings1
       let bindings3 = bind_controls c c'' bindings2
       return bindings3
-    
+
     list_unary :: Monad m => [Wire] -> Controls -> ([a] -> Ctrls a b -> m ([a], Ctrls a b)) -> BT m a b
     list_unary ws c f bindings = do
       let ws' = unbind_qubit_wire_list bindings ws
@@ -466,14 +462,14 @@ bind_gate namespace gate = case gate of
       w'' <- f w'
       let bindings1 = bind_qubit_wire w w'' bindings
       return bindings1
-    
+
     qunprep_ary :: Monad m => Wire -> (a -> m b) -> BT m a b
     qunprep_ary w f bindings = do
       let w' = unbind_qubit_wire bindings w
       w'' <- f w'
       let bindings1 = bind_bit_wire w w'' bindings
       return bindings1
-    
+
     cunary :: Monad m => Wire -> Controls -> (b -> Ctrls a b -> m (b, Ctrls a b)) -> BT m a b
     cunary w c f bindings = do
       let w' = unbind_bit_wire bindings w
@@ -482,39 +478,39 @@ bind_gate namespace gate = case gate of
       let bindings1 = bind_bit_wire w w'' bindings
       let bindings2 = bind_controls c c'' bindings1
       return bindings2
-    
+
     qinit_ary :: Monad m => Wire -> m a -> BT m a b
     qinit_ary w f bindings = do
       w'' <- f
       let bindings1 = bind_qubit_wire w w'' bindings
       return bindings1
-    
+
     cinit_ary :: Monad m => Wire -> m b -> BT m a b
     cinit_ary w f bindings = do
       w'' <- f
       let bindings1 = bind_bit_wire w w'' bindings
       return bindings1
-    
+
     qterm_ary :: Monad m => Wire -> (a -> m ()) -> BT m a b
     qterm_ary w f bindings = do
       let w' = unbind_qubit_wire bindings w
       () <- f w'
       let bindings1 = bind_delete w bindings
       return bindings1
-    
+
     cterm_ary :: Monad m => Wire -> (b -> m ()) -> BT m a b
     cterm_ary w f bindings = do
       let w' = unbind_bit_wire bindings w
       () <- f w'
       let bindings1 = bind_delete w bindings
       return bindings1
-    
+
     cgate_ary :: Monad m => Wire -> [Wire] -> ([b] -> m (b, [b])) -> BT m a b
     cgate_ary w vs f bindings = do
       let vs' = unbind_bit_wire_list bindings vs
       (w'', vs'') <- f vs'
       let bindings1 = bind_bit_wire w w'' bindings
-      let bindings2 = bind_bit_wire_list vs vs'' bindings1 
+      let bindings2 = bind_bit_wire_list vs vs'' bindings1
       return bindings2
 
     cgateinv_ary :: Monad m => Wire -> [Wire] -> (b -> [b] -> m [b]) -> BT m a b
@@ -532,10 +528,10 @@ bind_gate namespace gate = case gate of
       let c' = unbind_controls bindings c
       let ws' = unbind_list bindings ws
       (vs'',c'') <- f ws' c'
-      let bindings1 = bind_list vs vs'' bindings 
+      let bindings1 = bind_list vs vs'' bindings
       let bindings2 = bind_controls c c'' bindings1
       return bindings2
-      
+
     phase_ary :: Monad m => [Wire] -> Controls -> ([B_Endpoint a b] -> Ctrls a b -> m (Ctrls a b)) -> BT m a b
     phase_ary w c f bindings = do
       let w' = map (unbind bindings) w
@@ -564,7 +560,7 @@ transform_circuit transformer c bindings =
 
 -- | Like 'transform_circuit', but for boxed circuits.
 --
--- The handling of subroutines will depend on the transformer. 
+-- The handling of subroutines will depend on the transformer.
 -- For \"gate transformation\" types of applications, one typically
 -- would like to leave the boxed structure intact.
 -- For \"simulation\" types of applications, one would generally
@@ -574,7 +570,7 @@ transform_circuit transformer c bindings =
 -- within the semantic function of the Subroutine gate, whether to
 -- create another boxed gate or open the box.
 transform_bcircuit_rec :: Monad m => Transformer m a b -> BCircuit -> Bindings a b -> m (Bindings a b)
-transform_bcircuit_rec transformer (c,namespace) bindings = 
+transform_bcircuit_rec transformer (c,namespace) bindings =
   foldM apply bindings gs
   where
     (_,gs,_,_) = c
@@ -591,20 +587,20 @@ transform_bcircuit_id t c b = getId (transform_bcircuit_rec t c b)
 -- all wrapped in the DynamicTransformer data type.
 data DynamicTransformer m a b = DT {
      transformer :: Transformer m a b,
-     define_subroutine :: BoxId -> TypedSubroutine -> m (),     
+     define_subroutine :: BoxId -> TypedSubroutine -> m (),
      lifting_function :: b -> m Bool
   }	
 
 -- | Like 'transform_bcircuit_rec', but for dynamic-boxed circuits.
 --
--- \"Write\" operations can be thought of as gates, and so they are passed to 
--- the given transformer. The handling of \"Read\" operations is taken care of 
--- by the \"lifting_function\" of the DynamicTransformer. \"Subroutine\" operations 
+-- \"Write\" operations can be thought of as gates, and so they are passed to
+-- the given transformer. The handling of \"Read\" operations is taken care of
+-- by the \"lifting_function\" of the DynamicTransformer. \"Subroutine\" operations
 -- call the 'define_subroutine' function of the DynamicTransformer.
 transform_dbcircuit :: Monad m => DynamicTransformer m a b -> DBCircuit x -> Bindings a b -> m (x,Bindings a b)
 transform_dbcircuit dt (a0,rw) bindings = evalStateT (inner_transform dt (a0,rw) bindings) namespace_empty where
   inner_transform :: Monad m => DynamicTransformer m a b -> DBCircuit x -> Bindings a b -> (StateT Namespace m) (x,Bindings a b)
-  inner_transform dt (a0,rw) bindings = 
+  inner_transform dt (a0,rw) bindings =
     case rw of
       (RW_Return (_,_,x)) -> return (x,bindings)
       (RW_Write gate rw') -> do
@@ -622,3 +618,4 @@ transform_dbcircuit dt (a0,rw) bindings = evalStateT (inner_transform dt (a0,rw)
         let namespace' = map_provide name subroutine namespace
         put namespace'
         inner_transform dt (a0,rw') bindings
+
