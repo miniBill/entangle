@@ -40,15 +40,14 @@ strashow :: (Show a, Show b, Ord b, Num b) => (a -> [b]) -> [a] -> String
 strashow f xs = foldr (\ x y -> show' x ++ "\n" ++ y) "" $ stratify f xs where
     show' (s, es) = show s ++ ": " ++ (foldr1 (\e o -> e ++ ", " ++ o) $ map show es)
 
-mycirc :: Qubit -> Qubit -> Qubit -> Qubit -> Qubit -> Qubit ->
-    Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
-mycirc q1 q2 q3 q4 q5 q6 = do
+mycirc :: [Qubit] -> Circ Int
+mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q1 `controlled` q2
     qnot_at q2 `controlled` q3
     qnot_at q5 `controlled` q6
     qnot_at q4 `controlled` q5
     qnot_at q3 `controlled` q4
-    return (q1, q2, q3, q4, q5, q6)
+    return 6
 
 mytransformer :: Transformer (Writer [(String, [Int], [Int])]) Int Int
 mytransformer (T_QGate name a b inv nc f) = f g where
@@ -59,17 +58,10 @@ mytransformer (T_QGate name a b inv nc f) = f g where
         tell [(name, gates, open controls)]
         return (gates, g_controls, controls)
 
-i1 = qubit_of_wire 1
-i2 = qubit_of_wire 2
-i3 = qubit_of_wire 3
-i4 = qubit_of_wire 4
-i5 = qubit_of_wire 5
-i6 = qubit_of_wire 6
-
-((extracted, _), _) = extract_simple id arity_empty (mycirc i1 i2 i3 i4 i5 i6)
+((extracted, _), n) = extract_simple id arity_empty (mycirc $ map qubit_of_wire [1..])
 
 transformed :: Writer [(String, [Int], [Int])] (Bindings Int Int)
 transformed = transform_circuit mytransformer extracted bindings where
-    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..6]
+    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
 output = putStr $ strashow (\(_,b,c) -> b++c) $ snd $ runWriter $ transformed
