@@ -76,8 +76,10 @@ circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
 
 gate_to_matrix :: Num a => Int -> (String, [Int], [Int]) -> Matrix a
 gate_to_matrix size ("not", [q], [c]) = moving size sw m where
-    sw = (if q < c then [(q,c)] else []) ++ [(q, c+1)]
-    m = (identity $ 2 ^ (c-1)) `kronecker` cnot_matrix `kronecker` (identity $ 2 ^ (size - (q-1)))
+    c' = min q c
+    q' = max q c
+    sw = (q', c'+1) : (if q < c then [(q, c)] else [])
+    m = between (c'-1) cnot_matrix (size - q')
 
 cnot_matrix :: Num a => Matrix a
 cnot_matrix = matrix 4 4 gen where
@@ -109,9 +111,13 @@ swap_to_matrix size n m | n > m = swap_to_matrix size m n
                         | n == m = identity (2 ^ size)
                         | n < m - 1 = swap_to_matrix size n (m - 1) * swap_to_matrix size (m - 1) m
                         -- otherwise: n == m - 1
-                        | otherwise = before `kronecker` swap_matrix `kronecker` after where
-                            before = identity $ 2 ^ (n - 1)
-                            after  = identity $ 2 ^ (size - m)
+                        | otherwise = between (n - 1) swap_matrix (size - m) where
+
+
+between :: Num a => Int -> Matrix a -> Int -> Matrix a
+between b m a = before `kronecker` m `kronecker` after where
+    before = identity $ 2 ^ b
+    after  = identity $ 2 ^ a
 
 kronecker :: Num a => Matrix a -> Matrix a -> Matrix a
 kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
