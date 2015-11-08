@@ -73,8 +73,8 @@ circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     gate_list = concatMap snd stratified
     qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
     f gs = foldr (\g m -> gate_to_matrix g * m) (identity size) gs
-    gate_to_matrix ("not", [q], [c]) = moving [(c, 1), (q, 2)] $
-        cnot_matrix `kronecker` (identity $ qubit_max - 2)
+    gate_to_matrix ("not", [q], [c]) = moving qubit_max [(c, 1), (q, 2)] $
+        cnot_matrix `kronecker` (identity $ 2 ^ (qubit_max - 2))
 
 cnot_matrix :: Num a => Matrix a
 cnot_matrix = matrix 4 4 gen where
@@ -92,24 +92,23 @@ swap_matrix = matrix 4 4 gen where
     gen (4, 4) = 1
     gen _ = 0
 
-moving :: Num a => [(Int, Int)] -> Matrix a -> Matrix a
-moving moves m = back * m * forth where
-    size = nrows m
+moving :: Num a => Int -> [(Int, Int)] -> Matrix a -> Matrix a
+moving size moves m = back * m * forth where
     forth = move size moves
-    back  = move size $ map (\(t1, t2) -> (t2, t1)) moves
+    back  = move size $ reverse $ moves
 
 move :: Num a => Int -> [(Int, Int)] -> Matrix a
-move size ms = foldr f (identity size) ms where
+move size ms = foldr f (identity (2 ^ size)) ms where
     f (t1, t2) m = swap_to_matrix size t1 t2 * m
 
 swap_to_matrix :: Num a => Int -> Int -> Int -> Matrix a
 swap_to_matrix size n m | n > m = swap_to_matrix size m n
-                        | n == m = identity (2 * size)
+                        | n == m = identity (2 ^ size)
                         | n < m - 1 = swap_to_matrix size n (m - 1) * swap_to_matrix size (m - 1) m
                         -- otherwise: n == m - 1
                         | otherwise = before `kronecker` swap_matrix `kronecker` after where
-                            before = identity $ 2 * (n - 1)
-                            after  = identity $ (2 * size) - 2 * m
+                            before = identity $ 2 ^ (n - 1)
+                            after  = identity $ 2 ^ (size - m)
 
 kronecker :: Num a => Matrix a -> Matrix a -> Matrix a
 kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
@@ -135,6 +134,4 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     --qnot_at q3 `controlled` q4
     return 3
 
-output = putStr $ strashow $ circ_stratify mycirc
-
-main = undefined
+main = putStr $ strashow $ circ_stratify mycirc
