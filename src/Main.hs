@@ -154,11 +154,27 @@ kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
         bc = 1 + (c - 1) `mod` cb
 
 --- Esempio ---
+myfourthcirc :: [Qubit] -> Circ Int
+myfourthcirc (q1:_) = do
+    hadamard q1
+    qnot q1
+    hadamard q1
+    qnot q1
+    return 1
+
+mythirdcirc :: [Qubit] -> Circ Int
+mythirdcirc (q1:q2:q3:_) = do
+    qnot_at q2 `controlled` q1
+    qnot_at q2 `controlled` q3
+    qnot_at q2 `controlled` q1
+    qnot_at q2 `controlled` q3
+    return 3
+
 myothercirc :: [Qubit] -> Circ Int
 myothercirc (q1:_) = do
     hadamard q1
     hadamard q1
-    return 2
+    return 1
 
 mycirc :: [Qubit] -> Circ Int
 mycirc (q1:q2:q3:q4:q5:q6:_) = do
