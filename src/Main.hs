@@ -1,4 +1,4 @@
-module Test where
+module Main where
 
 import Quipper
 import Quipper.Circuit
@@ -65,26 +65,67 @@ circ_stratify circ = stratify (\(_,b,c) -> b++c) $ snd $ runWriter $ transformed
 -- size :: Int = 2 ^ qubit
 -- qubit_max :: Int
 -- stratified :: [(Int, [TransGate])]
-matrix_multiply :: Matrix -> Matrix -> Matrix
-matrix_multiply = undefined
 
-circ_matrixes :: TransCirc -> [(Int, Matrix)]
+circ_matrixes :: Num a => TransCirc -> [(Int, Matrix a)]
 circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     stratified = circ_stratify circ
     size = 2 ^ qubit_max
     gate_list = concatMap snd stratified
     qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
     f gs = foldr (\g m -> gate_to_matrix g * m) (identity size) gs
-    gate_to_matrix
+    gate_to_matrix ("not", [q], [c]) = moving [(c, 1), (q, 2)] $
+        cnot_matrix `kronecker` (identity $ qubit_max - 2)
+
+cnot_matrix :: Num a => Matrix a
+cnot_matrix = matrix 4 4 gen where
+    gen (1, 1) = 1
+    gen (2, 2) = 1
+    gen (3, 4) = 1
+    gen (4, 3) = 1
+    gen _ = 0
+
+swap_matrix :: Num a => Matrix a
+swap_matrix = matrix 4 4 gen where
+    gen (1, 1) = 1
+    gen (2, 3) = 1
+    gen (3, 2) = 1
+    gen (4, 4) = 1
+    gen _ = 0
+
+moving :: Num a => [(Int, Int)] -> Matrix a -> Matrix a
+moving moves m = back * m * forth where
+    size = nrows m
+    forth = move size moves
+    back  = move size $ map (\(t1, t2) -> (t2, t1)) moves
+
+move :: Num a => Int -> [(Int, Int)] -> Matrix a
+move size ms = foldr f (identity size) ms where
+    f (t1, t2) m = swap_to_matrix size t1 t2 * m
+
+swap_to_matrix :: Num a => Int -> Int -> Int -> Matrix a
+swap_to_matrix size n m | n > m = swap_to_matrix size m n
+                        | n == m = identity (2 * size)
+                        | n < m - 1 = swap_to_matrix size n (m - 1) * swap_to_matrix size (m - 1) m
+                        -- otherwise: n == m - 1
+                        | otherwise = before `kronecker` swap_matrix `kronecker` after where
+                            before = identity $ 2 * (n - 1)
+                            after  = identity $ (2 * size) - 2 * m
+
+kronecker :: Num a => Matrix a -> Matrix a -> Matrix a
+kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
+    ra = nrows a
+    rb = nrows b
+    ca = ncols a
+    cb = ncols b
+    gen r c = ae * be where
+        ae = a ! (ar, ac)
+        ar = 1 + (r - 1) `div` rb
+        ac = 1 + (c - 1) `div` cb
+        be = b ! (br, bc)
+        br = 1 + (r - 1) `mod` rb
+        bc = 1 + (c - 1) `mod` cb
 
 --- Esempio ---
-
-test = [[1, 2],
-        [2, 3],
-        [5, 6],
-        [4, 5],
-        [3, 4]]
-
 mycirc :: [Qubit] -> Circ Int
 mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q1 `controlled` q2
@@ -95,3 +136,5 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     return 3
 
 output = putStr $ strashow $ circ_stratify mycirc
+
+main = undefined
