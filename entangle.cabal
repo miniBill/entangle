@@ -5,7 +5,7 @@ build-type: Simple
 license: AllRightsReserved
 license-file: COPYRIGHT
 data-dir: ""
-
+ 
 executable entangle
     build-depends: QuickCheck -any, base -any, containers -any,
                    directory -any, easyrender -any, mtl -any, process -any,
@@ -13,5 +13,5 @@ executable entangle
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: QMonad.MC QMonad.Quipper QMonad
-
+    other-modules: SqMath QMonad.MC QMonad.Quipper QMonad SqMath
+ 

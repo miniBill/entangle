@@ -1,5 +1,6 @@
 module Main where
 
+import SqMath
 import Quipper
 import Quipper.Circuit
 import Quipper.Monad
@@ -66,7 +67,7 @@ circ_stratify circ = stratify (\(_,b,c) -> b++c) $ snd $ runWriter $ transformed
 -- qubit_max :: Int
 -- stratified :: [(Int, [TransGate])]
 
-circ_matrixes :: Num a => TransCirc -> [(Int, Matrix a)]
+circ_matrixes :: (Num a, Floating a) => TransCirc -> [(Int, Matrix a)]
 circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     stratified = circ_stratify circ
     size = 2 ^ qubit_max
@@ -74,12 +75,32 @@ circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
     f gs = foldr (\g m -> gate_to_matrix qubit_max g * m) (identity size) gs
 
-gate_to_matrix :: Num a => Int -> (String, [Int], [Int]) -> Matrix a
-gate_to_matrix size ("not", [q], [c]) = moving size sw m where
+gate_to_matrix :: (Num a, Floating a) => Int -> (String, [Int], [Int]) -> Matrix a
+gate_to_matrix size (name, [q], []) = moving size sw m where
+    q' = q
+    sw = []
+    m = between (q'-1) (name_to_matrix 1 0 name) (size - q')
+gate_to_matrix size (name, [q], [c]) = moving size sw m where
     c' = min q c
     q' = max q c
     sw = (q', c'+1) : (if q < c then [(q, c)] else [])
-    m = between (c'-1) cnot_matrix (size - q')
+    m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
+
+name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
+name_to_matrix 1 0 "not" = not_matrix
+name_to_matrix 1 0 "H" = hadamard_matrix
+name_to_matrix 1 1 "not" = cnot_matrix
+
+hadamard_matrix :: (Num a, Floating a) => Matrix a
+hadamard_matrix = (1 / sqrt 2) `scaleMatrix` matrix 2 2 gen where
+    gen (2, 2) = -1
+    gen _ = 1
+
+not_matrix :: Num a => Matrix a
+not_matrix = matrix 2 2 gen where
+    gen (1, 2) = 1
+    gen (2, 1) = 1
+    gen _ = 0
 
 cnot_matrix :: Num a => Matrix a
 cnot_matrix = matrix 4 4 gen where
@@ -100,7 +121,7 @@ swap_matrix = matrix 4 4 gen where
 moving :: Num a => Int -> [(Int, Int)] -> Matrix a -> Matrix a
 moving size moves m = back * m * forth where
     forth = move size moves
-    back  = move size $ reverse $ moves
+    back  = move size $ reverse moves
 
 move :: Num a => Int -> [(Int, Int)] -> Matrix a
 move size ms = foldr f (identity (2 ^ size)) ms where
@@ -112,7 +133,6 @@ swap_to_matrix size n m | n > m = swap_to_matrix size m n
                         | n < m - 1 = swap_to_matrix size n (m - 1) * swap_to_matrix size (m - 1) m
                         -- otherwise: n == m - 1
                         | otherwise = between (n - 1) swap_matrix (size - m) where
-
 
 between :: Num a => Int -> Matrix a -> Int -> Matrix a
 between b m a = before `kronecker` m `kronecker` after where
@@ -135,12 +155,10 @@ kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
 
 --- Esempio ---
 myothercirc :: [Qubit] -> Circ Int
-myothercirc (q1:q2:q3:q4:_) = do
-    qnot_at q1 `controlled` q2
-    qnot_at q3 `controlled` q4
-    qnot_at q1 `controlled` q2
-    qnot_at q3 `controlled` q4
-    return 4
+myothercirc (q1:_) = do
+    hadamard q1
+    hadamard q1
+    return 2
 
 mycirc :: [Qubit] -> Circ Int
 mycirc (q1:q2:q3:q4:q5:q6:_) = do
@@ -151,4 +169,11 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q3 `controlled` q4
     return 6
 
-main = putStr $ strashow $ circ_stratify mycirc
+main = do
+    putStr $ strashow $ circ_stratify mycirc
+    putStr "---\n"
+    putStr $ show $ circ_matrixes mycirc
+    putStr "\n---\n---\n"
+    putStr $ strashow $ circ_stratify myothercirc
+    putStr "---\n"
+    putStr $ show $ circ_matrixes myothercirc
