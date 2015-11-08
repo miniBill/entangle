@@ -1,85 +1,97 @@
-{-# LANGUAGE GADTs, MultiParamTypeClasses, TypeFamilies, FlexibleInstances #-}
+module Test where
 
------------------------------------------------------------------------------
---
--- Module      :  Main
--- Copyright   :
--- License     :  AllRightsReserved
---
--- Maintainer  :
--- Stability   :
--- Portability :
---
--- |
---
------------------------------------------------------------------------------
+import Quipper
+import Quipper.Circuit
+import Quipper.Monad
+import Quipper.Transformer
+import Debug.Trace
 
-module Main (
-    main
-) where
+import Control.Monad.Writer.Lazy
+import Data.Maybe
+import Data.Matrix
+import Data.Ratio
+import qualified Data.Map.Strict as Map
 
-import QMonad
-import QMonad.Quipper
-import QMonad.MC
+data StrataState a b = StrataState {
+    strataState :: Map.Map b b,
+    composition :: Map.Map b [a] }
 
-import qualified Quipper as Q
+stratify :: (Num b, Ord b) => (a -> [b]) -> [a] -> [(b, [a])]
+stratify f = Map.toAscList . stratafold (stratify' f)
 
--- This file is part of Q. Copyright (C) 2011-2014. Please see the
--- file COPYRIGHT for a list of authors, copyright holders, licensing,
--- and other details. All rights reserved.
---
--- ======================================================================
+stratafold :: (a -> StrataState a b -> StrataState a b) -> [a] -> Map.Map b [a]
+stratafold f = composition . foldr f (StrataState Map.empty Map.empty) . reverse
 
-circuit :: (QMonad m) => Qubit m -> Qubit m -> Qubit m -> m (Qubit m, Qubit m, Qubit m)
-circuit a b c = do
-  qnot a `controlled` [b]
-  qnot b `controlled` [c]
-  hadamard c `controlled` [a,b]
-  return (a, b, c)
+stratify' :: (Ord b, Num b) => (a -> [b]) -> a -> StrataState a b -> StrataState a b
+stratify' f e (StrataState strata old) = StrataState newstrata new where
+        estratum = stratum (f e) strata
+        newstrata = foldr (flip Map.insert $ estratum + 1) strata (f e)
+        new = Map.insertWith (++) estratum [e] old
 
-hadamard2 :: QMonad m => Qubit m -> Qubit m -> Qubit m -> m (Qubit m, Qubit m, Qubit m)
-hadamard2 h a b = do
-  with_ancilla $ \c -> do
-    qnot c `controlled` [a, b]
-    hadamard h `controlled` [c]
-    qnot c `controlled` [a, b]
-    return ()
-  return (h, a, b) where
+stratum :: (Num b, Ord b) => [b] -> Map.Map b b -> b
+stratum x s = foldr (max .  stratum') 0 x where
+    stratum' b = Map.findWithDefault 0 b s
 
-example :: QMonad m => Qubit m -> Qubit m -> Qubit m -> Qubit m -> Qubit m ->
-    m (Qubit m, Qubit m, Qubit m, Qubit m, Qubit m)
-example a b c d e = do
-  circuit a b c
-  circuit b c a
-  with_controls (d .==. 1 .&&. e .==. 0) $ do
-      circuit a b c
-      circuit b c a
-  circuit a b c
-  circuit b c a
-  return (a, b, c, d, e)
+strashow :: (Show a, Show b, Ord b, Num b) => [(b, [a])] -> String
+strashow xs = foldr (\ x y -> show' x ++ "\n" ++ y) "" $ xs where
+    show' (s, es) = show s ++ ": " ++ (foldr1 (\e o -> e ++ ", " ++ o) $ map show es)
 
-simple :: QMonad m => Qubit m -> m (Qubit m)
-simple q = do
-    qnot q
-    hadamard q
-    qnot q
+mytransformer :: Transformer (Writer [(String, [Int], [Int])]) Int Int
+mytransformer (T_QGate name a b inv nc f) = f g where
+    open = map (\(Signed x _) -> endpoint_to_int x)
+    endpoint_to_int (Endpoint_Qubit x) = x
+    endpoint_to_int (Endpoint_Bit x) = -x
+    g gates g_controls controls = do
+        tell [(name, gates, open controls)]
+        return (gates, g_controls, controls)
 
--- Up to here, original code with generalized types, now we lift it into our two monads
-type QQ = Q.Qubit
-type QM = Qubit MC
+type TransCirc = [Qubit] -> Circ Int
+type TransGate = (String, [Int], [Int])
 
-simple' :: QQ -> Q.Circ QQ
-simple' = lift1 simple
+extract :: TransCirc -> (Circuit, Int)
+extract circ = (extracted, extracted_n) where
+    ((extracted, _), extracted_n) = extract_simple id arity_empty (circ $ map qubit_of_wire [1..])
 
-simple'' :: QM -> MC QM
-simple'' = lift1 simple
+transformed :: Circuit -> Int -> Writer [TransGate] (Bindings Int Int)
+transformed circuit n = transform_circuit mytransformer circuit bindings where
+    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
-example' :: QQ -> QQ -> QQ -> QQ -> QQ -> Q.Circ (QQ, QQ, QQ, QQ, QQ)
-example' = lift5 example
+circ_stratify :: TransCirc -> [(Int, [TransGate])]
+circ_stratify circ = stratify (\(_,b,c) -> b++c) $ snd $ runWriter $ transformed extracted extracted_n where
+    (extracted, extracted_n) = extract circ
 
-example'' :: QM -> QM -> QM -> QM -> QM -> MC (QM, QM, QM, QM, QM)
-example'' = lift5 example
+-- circ_matrixes :: [(Int, [TransGate])] -> [(Int, Matrix)]
+-- f :: [TransGate] -> Matrix
+-- size :: Int = 2 ^ qubit
+-- qubit_max :: Int
+-- stratified :: [(Int, [TransGate])]
+matrix_multiply :: Matrix -> Matrix -> Matrix
+matrix_multiply = undefined
 
-main = do
-    print $ example'' (sc 1) (sc 2) (sc 3) (sc 4) (sc 5)
-    Q.print_simple Q.Preview example'
+circ_matrixes :: TransCirc -> [(Int, Matrix)]
+circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
+    stratified = circ_stratify circ
+    size = 2 ^ qubit_max
+    gate_list = concatMap snd stratified
+    qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
+    f gs = foldr (\g m -> gate_to_matrix g * m) (identity size) gs
+    gate_to_matrix
+
+--- Esempio ---
+
+test = [[1, 2],
+        [2, 3],
+        [5, 6],
+        [4, 5],
+        [3, 4]]
+
+mycirc :: [Qubit] -> Circ Int
+mycirc (q1:q2:q3:q4:q5:q6:_) = do
+    qnot_at q1 `controlled` q2
+    qnot_at q2 `controlled` q3
+    --qnot_at q5 `controlled` q6
+    --qnot_at q4 `controlled` q5
+    --qnot_at q3 `controlled` q4
+    return 3
+
+output = putStr $ strashow $ circ_stratify mycirc
