@@ -72,9 +72,12 @@ circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     size = 2 ^ qubit_max
     gate_list = concatMap snd stratified
     qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
-    f gs = foldr (\g m -> gate_to_matrix g * m) (identity size) gs
-    gate_to_matrix ("not", [q], [c]) = moving qubit_max [(c, 1), (q, 2)] $
-        cnot_matrix `kronecker` (identity $ 2 ^ (qubit_max - 2))
+    f gs = foldr (\g m -> gate_to_matrix qubit_max g * m) (identity size) gs
+
+gate_to_matrix :: Num a => Int -> (String, [Int], [Int]) -> Matrix a
+gate_to_matrix size ("not", [q], [c]) = moving size sw m where
+    sw = (if q < c then [(q,c)] else []) ++ [(q, c+1)]
+    m = (identity $ 2 ^ (c-1)) `kronecker` cnot_matrix `kronecker` (identity $ 2 ^ (size - (q-1)))
 
 cnot_matrix :: Num a => Matrix a
 cnot_matrix = matrix 4 4 gen where
@@ -125,13 +128,21 @@ kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
         bc = 1 + (c - 1) `mod` cb
 
 --- Esempio ---
+myothercirc :: [Qubit] -> Circ Int
+myothercirc (q1:q2:q3:q4:_) = do
+    qnot_at q1 `controlled` q2
+    qnot_at q3 `controlled` q4
+    qnot_at q1 `controlled` q2
+    qnot_at q3 `controlled` q4
+    return 4
+
 mycirc :: [Qubit] -> Circ Int
 mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q1 `controlled` q2
     qnot_at q2 `controlled` q3
-    --qnot_at q5 `controlled` q6
-    --qnot_at q4 `controlled` q5
-    --qnot_at q3 `controlled` q4
-    return 3
+    qnot_at q5 `controlled` q6
+    qnot_at q4 `controlled` q5
+    qnot_at q3 `controlled` q4
+    return 6
 
 main = putStr $ strashow $ circ_stratify mycirc
