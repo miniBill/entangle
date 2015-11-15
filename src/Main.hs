@@ -8,6 +8,7 @@ import Quipper.Transformer
 import Debug.Trace
 
 import Control.Monad.Writer.Lazy
+import Data.List
 import Data.Maybe
 import Data.Matrix
 import Data.Ratio
@@ -185,11 +186,35 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q3 `controlled` q4
     return 6
 
+--- Converter ---
+to_qmc :: [(Int, Matrix Expr)] -> String
+to_qmc sts = "qmc\n"
+          ++ "module Test Double\n"
+--           const matrix asdf = [1,2;3,4];
+--           "mf2so([1,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0])
+          ++ concatMap (uncurry matrix_to_qmc) sts
+          ++ "s: [0.." ++ show (length sts) ++ "] init 0;\n"
+          ++ concatMap (state_to_qmc . fst) sts
+          ++ "[] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ")" where
+    l = length sts
+
+matrix_to_qmc :: (Show a) => Int -> Matrix a -> String
+matrix_to_qmc s m = "const matrix M_" ++ show s ++ " = [" ++ inner ++ "];\n" where
+    inner = concat $ intersperse ";" $ map sl $ toLists m
+    sl l = concat $ intersperse "," $ map show l
+
+state_to_qmc :: Int -> String
+state_to_qmc s = "[] (s = " ++ show s ++ ")"
+              ++ " -> "
+              ++ "M_" ++ show s
+              ++ " : "
+              ++ "(s' = " ++ show (s + 1) ++ ")\n"
+
 main = do
     putStr $ strashow $ circ_stratify mycirc
     putStr "---\n"
-    putStr $ show $ circ_matrixes mycirc
+    print $ circ_matrixes mycirc
     putStr "\n---\n---\n"
     putStr $ strashow $ circ_stratify myothercirc
     putStr "---\n"
-    putStr $ show $ circ_matrixes myothercirc
+    print $ circ_matrixes myothercirc

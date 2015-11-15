@@ -91,6 +91,7 @@ simplify ((Leaf a) :/: (Leaf b)) | a `mod` b == 0 = Leaf $ a `div` b
 simplify (((Leaf a) :*: b) :/: (Leaf c)) | a `mod` c == 0 = (Leaf $ a `div` c) * b
 
 simplify (Sqrt (Leaf a)) | Just r <- perfectSqrt a = Leaf r
+simplify (Sqrt (x :/: y)) = (sqrt x) / (sqrt y)
 
 simplify (Abs (Leaf a)) = Leaf $ abs a
 
@@ -102,11 +103,24 @@ perfectSqrt a | b * b == a = Just b where
     b = floor $ sqrt $ fromInteger a
 perfectSqrt _ = Nothing
 
+showF :: Expr -> String
+showF e = showF' 0 e
+
+showF' :: Int -> Expr -> String
+showF' i e = prefix i ++ showF'' e where
+    prefix 0 = ""
+    prefix i = concat (replicate i "   ")
+    showF'' (Leaf a)  = show a
+    showF'' (x :+: y) = "+\n"    ++ showF' (i+1) x ++ "\n" ++ showF' (i+1) y
+    showF'' (x :*: y) = "*\n"    ++ showF' (i+1) x ++ "\n" ++ showF' (i+1) y
+    showF'' (x :/: y) = "/\n"    ++ showF' (i+1) x ++ "\n" ++ showF' (i+1) y
+    showF'' (Abs a)   = "abs\n"  ++ showF' (i+1) a
+    showF'' (Sqrt a)  = "sqrt\n" ++ showF' (i+1) a
+
 instance Show Expr where
-    showsPrec p e0 = case e0 of
-        (Leaf i) -> shows i
-        (x :+: y) -> showParen (p >= 6) $ (showsPrec 6 x) . (" + " ++) . (showsPrec 6 y)
-        (x :*: y) -> showParen (p >= 7) $ (showsPrec 7 x) . (" * " ++) . (showsPrec 7 y)
-        (x :/: y) -> showParen (p >= 7) $ (showsPrec 7 x) . (" / " ++) . (showsPrec 7 y)
-        (Abs a) -> ("abs(" ++) . showsPrec 10 a . (++ ")")
-        (Sqrt a) -> ("sqrt(" ++) . showsPrec 10 a . (++ ")")
+    show (Leaf i)  = show i
+    show (x :+: y) = "(" ++ show x ++ " + " ++ show y ++ ")"
+    show (x :*: y) = "(" ++ show x ++ " * " ++ show y ++ ")"
+    show (x :/: y) = "(" ++ show x ++ " / " ++ show y ++ ")"
+    show (Abs a)   = "abs(" ++ show a ++ ")"
+    show (Sqrt a)  = "sqrt(" ++ show a ++ ")"
