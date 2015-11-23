@@ -199,14 +199,14 @@ to_qmc sts = "qmc\n"
     l = length sts
 
 matrix_to_qmc :: (Show a) => Int -> Matrix a -> String
-matrix_to_qmc s m = "const matrix M_" ++ show s ++ " = [" ++ inner ++ "];\n" where
+matrix_to_qmc s m = "const matrix A" ++ show s ++ " = [" ++ inner ++ "];\n" where
     inner = concat $ intersperse ";" $ map sl $ toLists m
     sl l = concat $ intersperse "," $ map show l
 
 state_to_qmc :: Int -> String
 state_to_qmc s = "[] (s = " ++ show s ++ ")"
               ++ " -> "
-              ++ "M_" ++ show s
+              ++ "A" ++ show s
               ++ " : "
               ++ "(s' = " ++ show (s + 1) ++ ")\n"
 
