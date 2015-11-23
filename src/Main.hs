@@ -8,6 +8,7 @@ import Quipper.Transformer
 import Debug.Trace
 
 import Control.Monad.Writer.Lazy
+import Control.Arrow
 import Data.List
 import Data.Maybe
 import Data.Matrix
@@ -19,15 +20,15 @@ data StrataState a b = StrataState {
     composition :: Map.Map b [a] }
 
 stratify :: (Num b, Ord b) => (a -> [b]) -> [a] -> [(b, [a])]
-stratify f = Map.toAscList . stratafold (stratify' f)
+stratify f = Map.toAscList . stratafold stratify' . map (id &&& f)
 
-stratafold :: (a -> StrataState a b -> StrataState a b) -> [a] -> Map.Map b [a]
+stratafold :: ((a, [b]) -> StrataState a b -> StrataState a b) -> [(a, [b])] -> Map.Map b [a]
 stratafold f = composition . foldr f (StrataState Map.empty Map.empty) . reverse
 
-stratify' :: (Ord b, Num b) => (a -> [b]) -> a -> StrataState a b -> StrataState a b
-stratify' f e (StrataState strata old) = StrataState newstrata new where
-        estratum = stratum (f e) strata
-        newstrata = foldr (flip Map.insert $ estratum + 1) strata (f e)
+stratify' :: (Ord b, Num b) => (a, [b]) -> StrataState a b -> StrataState a b
+stratify' (e, fe) (StrataState strata old) = StrataState newstrata new where
+        estratum = stratum fe strata
+        newstrata = foldr (flip Map.insert $ estratum + 1) strata fe
         new = Map.insertWith (++) estratum [e] old
 
 stratum :: (Num b, Ord b) => [b] -> Map.Map b b -> b
