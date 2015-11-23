@@ -194,7 +194,8 @@ to_qmc sts = "qmc\n"
           ++ concatMap (uncurry matrix_to_qmc) sts
           ++ "s: [0.." ++ show (length sts) ++ "] init 0;\n"
           ++ concatMap (state_to_qmc . fst) sts
-          ++ "[] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ")" where
+          ++ "[] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ")\n"
+          ++ "endmodule" where
     l = length sts
 
 matrix_to_qmc :: (Show a) => Int -> Matrix a -> String
