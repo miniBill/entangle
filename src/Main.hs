@@ -37,29 +37,39 @@ strashow :: (Show a, Show b, Ord b, Num b) => [(b, [a])] -> String
 strashow xs = foldr (\ x y -> show' x ++ "\n" ++ y) "" $ xs where
     show' (s, es) = show s ++ ": " ++ (foldr1 (\e o -> e ++ ", " ++ o) $ map show es)
 
-mytransformer :: Transformer (Writer [(String, [Int], [Int])]) Int Int
+data Transformed = Gate String [Int] [Int]
+                 | Measure Int deriving Show
+
+mytransformer :: Transformer (Writer [Transformed]) Int Int
 mytransformer (T_QGate name a b inv nc f) = f g where
     open = map (\(Signed x _) -> endpoint_to_int x)
     endpoint_to_int (Endpoint_Qubit x) = x
     endpoint_to_int (Endpoint_Bit x) = -x
     g gates g_controls controls = do
-        tell [(name, gates, open controls)]
+        tell [Gate name gates (open controls)]
         return (gates, g_controls, controls)
+mytransformer (T_QMeas f) = f g where
+    g qubit = do
+        tell [Measure qubit]
+        return qubit
 
 type TransCirc = [Qubit] -> Circ Int
-type TransGate = (String, [Int], [Int])
 
 extract :: TransCirc -> (Circuit, Int)
 extract circ = (extracted, extracted_n) where
     ((extracted, _), extracted_n) = extract_simple id arity_empty (circ $ map qubit_of_wire [1..])
 
-transformed :: Circuit -> Int -> Writer [TransGate] (Bindings Int Int)
+transformed :: Circuit -> Int -> Writer [Transformed] (Bindings Int Int)
 transformed circuit n = transform_circuit mytransformer circuit bindings where
     bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
-circ_stratify :: TransCirc -> [(Int, [TransGate])]
-circ_stratify circ = stratify (\(_,b,c) -> b++c) $ snd $ runWriter $ transformed extracted extracted_n where
+circ_stratify :: TransCirc -> [(Int, [Transformed])]
+circ_stratify circ = stratify get_gates $ snd $ runWriter $ transformed extracted extracted_n where
     (extracted, extracted_n) = extract circ
+
+get_gates :: Transformed -> [Int]
+get_gates (Gate _ qs cs) = qs ++ cs
+get_gates (Measure q) = [q]
 
 -- circ_matrixes :: [(Int, [TransGate])] -> [(Int, Matrix)]
 -- f :: [TransGate] -> Matrix
@@ -72,19 +82,26 @@ circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     stratified = circ_stratify circ
     size = 2 ^ qubit_max
     gate_list = concatMap snd stratified
-    qubit_max = maximum $ concatMap (\(_, ms, cs) -> ms ++ cs) gate_list
+    qubit_max = maximum $ concatMap get_gates gate_list
     f gs = foldr (\g m -> gate_to_matrix qubit_max g * m) (identity size) gs
 
-gate_to_matrix :: (Num a, Floating a) => Int -> (String, [Int], [Int]) -> Matrix a
-gate_to_matrix size (name, [q], []) = moving size sw m where
+gate_to_matrix :: (Num a, Floating a) => Int -> Transformed -> Matrix a
+gate_to_matrix size (Gate name [q] []) = moving size sw m where
     q' = q
     sw = []
     m = between (q'-1) (name_to_matrix 1 0 name) (size - q')
-gate_to_matrix size (name, [q], [c]) = moving size sw m where
+gate_to_matrix size (Gate name [q] [c]) = moving size sw m where
     c' = min q c
     q' = max q c
     sw = (q', c'+1) : (if q < c then [(q, c)] else [])
     m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
+gate_to_matrix size (Measure q) = m where
+    m = between (q-1) (measure_matrix q) (size - q)
+
+measure_matrix :: (Num a) => Int -> Matrix a
+measure_matrix i = matrix 2 2 gen where
+  gen (x, y) | x == i && y == i = 1
+  gen _ = 0
 
 name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
 name_to_matrix 1 0 "not" = not_matrix
@@ -184,6 +201,15 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q4 `controlled` q5
     qnot_at q3 `controlled` q4
     return 6
+
+deutsch :: [Qubit] -> Circ Int
+deutsch (q1:q2:_) = do
+    hadamard q1
+    hadamard q2
+    qnot_at q2 `controlled` q1
+    hadamard q1
+    measure q1
+    return 2
 
 --- Converter ---
 to_qmc :: [(Int, Matrix Expr)] -> String
