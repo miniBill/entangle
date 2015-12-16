@@ -58,9 +58,21 @@ class Tuple a where
     size :: a -> Int
     tupleFromList :: [Qubit] -> a
 
+instance Tuple Qubit where
+    size _ = 1
+    tupleFromList = head
+
 instance Tuple (Qubit, Qubit) where
     size _ = 2
     tupleFromList (q1:q2:_) = (q1, q2)
+
+instance Tuple (Qubit, Qubit, Qubit) where
+    size _ = 3
+    tupleFromList (q1:q2:q3:_) = (q1, q2, q3)
+
+instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
+    size _ = 6
+    tupleFromList (q1:q2:q3:q4:q5:q6:_) = (q1, q2, q3, q4, q5, q6)
 
 extract :: Tuple a => (a -> Circ b) -> (Circuit, Int)
 extract circ = (extracted, extracted_n) where
@@ -180,36 +192,36 @@ kronecker a b = matrix (ra * rb) (ca * cb) (uncurry gen) where
         bc = 1 + (c - 1) `mod` cb
 
 --- Esempio ---
-myfourthcirc :: [Qubit] -> Circ Int
-myfourthcirc (q1:_) = do
+myfourthcirc :: Qubit -> Circ Qubit
+myfourthcirc q1 = do
     hadamard q1
     qnot q1
     hadamard q1
     qnot q1
-    return 1
+    return q1
 
-mythirdcirc :: [Qubit] -> Circ Int
-mythirdcirc (q1:q2:q3:_) = do
+mythirdcirc :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
+mythirdcirc (q1, q2, q3) = do
     qnot_at q2 `controlled` q1
     qnot_at q2 `controlled` q3
     qnot_at q2 `controlled` q1
     qnot_at q2 `controlled` q3
-    return 3
+    return (q1, q2, q3)
 
-myothercirc :: [Qubit] -> Circ Int
-myothercirc (q1:_) = do
+myothercirc :: Qubit -> Circ Qubit
+myothercirc q1 = do
     hadamard q1
     hadamard q1
-    return 1
+    return q1
 
-mycirc :: [Qubit] -> Circ Int
-mycirc (q1:q2:q3:q4:q5:q6:_) = do
+mycirc :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+mycirc (q1, q2, q3, q4, q5, q6) = do
     qnot_at q1 `controlled` q2
     qnot_at q2 `controlled` q3
     qnot_at q5 `controlled` q6
     qnot_at q4 `controlled` q5
     qnot_at q3 `controlled` q4
-    return 6
+    return (q1, q2, q3, q4, q5, q6)
 
 deutsch :: (Qubit, Qubit) -> Circ Bit
 deutsch (q1, q2) = do
@@ -220,10 +232,10 @@ deutsch (q1, q2) = do
     measure q1
 
 
-oneq :: [Qubit] -> Circ Int
-oneq (q1:_) = do
+oneq :: Qubit -> Circ Qubit
+oneq q1 = do
   hadamard_at q1
-  return 1
+  return q1
 
 
 --- Converter ---
@@ -251,12 +263,15 @@ state_to_qmc s = "  [] (s = " ++ show s ++ ")"
               ++ ">> : "
               ++ "(s' = " ++ show (s + 1) ++ ");\n"
 
-main = do
-    putStr $ strashow $ circ_stratify deutsch
+full_out :: Tuple a => (a -> Circ b) -> IO ()
+full_out c = do
+--    putStr "---\n"
+--    print $ circ_matrixes c
     putStr "---\n"
-    print $ circ_matrixes deutsch
-    putStr "\n---\n---\n"
-    putStr $ strashow $ circ_stratify deutsch
+    putStr $ strashow $ circ_stratify c
     putStr "---\n"
-    putStrLn $ to_qmc $ circ_matrixes deutsch
+    putStrLn $ to_qmc $ circ_matrixes c
+    putStr "---\n"
+
+main = mapM_ full_out [deutsch, oneq]
 
