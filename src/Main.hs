@@ -238,6 +238,9 @@ oneq q1 = do
   return q1
 
 
+double_meas :: (Qubit, Qubit) -> Circ (Bit, Bit)
+double_meas (q1, q2) = measure (q1, q2)
+
 --- Converter ---
 to_qmc :: [(Int, Matrix Expr)] -> String
 to_qmc sts = "qmc\n"
@@ -273,5 +276,8 @@ full_out c = do
     putStrLn $ to_qmc $ circ_matrixes c
     putStr "---\n"
 
-main = mapM_ full_out [deutsch, oneq]
+main = do
+  full_out deutsch
+  full_out oneq
+  full_out double_meas
 
