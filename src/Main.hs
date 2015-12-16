@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Main where
 
 import SqMath
@@ -53,17 +54,25 @@ mytransformer (T_QMeas f) = f g where
         tell [Measure qubit]
         return qubit
 
-type TransCirc = [Qubit] -> Circ Int
+class Tuple a where
+    size :: a -> Int
+    tupleFromList :: [Qubit] -> a
 
-extract :: TransCirc -> (Circuit, Int)
+instance Tuple (Qubit, Qubit) where
+    size _ = 2
+    tupleFromList (q1:q2:_) = (q1, q2)
+
+extract :: Tuple a => (a -> Circ b) -> (Circuit, Int)
 extract circ = (extracted, extracted_n) where
-    ((extracted, _), extracted_n) = extract_simple id arity_empty (circ $ map qubit_of_wire [1..])
+    arg = tupleFromList $ map qubit_of_wire [1..]
+    extracted_n = size arg
+    ((extracted, _), _) = extract_simple id arity_empty (circ arg)
 
 transformed :: Circuit -> Int -> Writer [Transformed] (Bindings Int Int)
 transformed circuit n = transform_circuit mytransformer circuit bindings where
     bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
-circ_stratify :: TransCirc -> [(Int, [Transformed])]
+circ_stratify :: Tuple a => (a -> Circ b) -> [(Int, [Transformed])]
 circ_stratify circ = stratify get_gates $ snd $ runWriter $ transformed extracted extracted_n where
     (extracted, extracted_n) = extract circ
 
@@ -77,7 +86,7 @@ get_gates (Measure q) = [q]
 -- qubit_max :: Int
 -- stratified :: [(Int, [TransGate])]
 
-circ_matrixes :: (Num a, Floating a) => TransCirc -> [(Int, Matrix a)]
+circ_matrixes :: (Num a, Floating a, Tuple b) => (b -> Circ c) -> [(Int, Matrix a)]
 circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
     stratified = circ_stratify circ
     size = 2 ^ qubit_max
@@ -202,14 +211,13 @@ mycirc (q1:q2:q3:q4:q5:q6:_) = do
     qnot_at q3 `controlled` q4
     return 6
 
-deutsch :: [Qubit] -> Circ Int
-deutsch (q1:q2:_) = do
+deutsch :: (Qubit, Qubit) -> Circ Bit
+deutsch (q1, q2) = do
     hadamard q1
     hadamard q2
     qnot_at q2 `controlled` q1
     hadamard q1
     measure q1
-    return 2
 
 
 oneq :: [Qubit] -> Circ Int
@@ -244,11 +252,11 @@ state_to_qmc s = "  [] (s = " ++ show s ++ ")"
               ++ "(s' = " ++ show (s + 1) ++ ");\n"
 
 main = do
-    putStr $ strashow $ circ_stratify oneq
+    putStr $ strashow $ circ_stratify deutsch
     putStr "---\n"
-    print $ circ_matrixes oneq
+    print $ circ_matrixes deutsch
     putStr "\n---\n---\n"
-    putStr $ strashow $ circ_stratify oneq
+    putStr $ strashow $ circ_stratify deutsch
     putStr "---\n"
-    putStrLn $ to_qmc $ circ_matrixes oneq
-    print $ to_qmc $ circ_matrixes oneq
+    putStrLn $ to_qmc $ circ_matrixes deutsch
+
