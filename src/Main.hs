@@ -211,16 +211,23 @@ deutsch (q1:q2:_) = do
     measure q1
     return 2
 
+
+oneq :: [Qubit] -> Circ Int
+oneq (q1:_) = do
+  hadamard_at q1
+  return 1
+
+
 --- Converter ---
 to_qmc :: [(Int, Matrix Expr)] -> String
 to_qmc sts = "qmc\n"
-          ++ "module Test Double\n"
 --           const matrix asdf = [1,2;3,4];
 --           "mf2so([1,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0])
           ++ concatMap (uncurry matrix_to_qmc) sts
-          ++ "s: [0.." ++ show (length sts) ++ "] init 0;\n"
+          ++ "module test\n"
+          ++ "  s: [0.." ++ show (length sts) ++ "] init 0;\n"
           ++ concatMap (state_to_qmc . fst) sts
-          ++ "[] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ")\n"
+          ++ "  [] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ");\n"
           ++ "endmodule" where
     l = length sts
 
@@ -230,17 +237,18 @@ matrix_to_qmc s m = "const matrix A" ++ show s ++ " = [" ++ inner ++ "];\n" wher
     sl l = concat $ intersperse "," $ map show l
 
 state_to_qmc :: Int -> String
-state_to_qmc s = "[] (s = " ++ show s ++ ")"
+state_to_qmc s = "  [] (s = " ++ show s ++ ")"
               ++ " -> "
-              ++ "A" ++ show s
-              ++ " : "
-              ++ "(s' = " ++ show (s + 1) ++ ")\n"
+              ++ "<<A" ++ show s
+              ++ ">> : "
+              ++ "(s' = " ++ show (s + 1) ++ ");\n"
 
 main = do
-    putStr $ strashow $ circ_stratify mycirc
+    putStr $ strashow $ circ_stratify oneq
     putStr "---\n"
-    print $ circ_matrixes mycirc
+    print $ circ_matrixes oneq
     putStr "\n---\n---\n"
-    putStr $ strashow $ circ_stratify myothercirc
+    putStr $ strashow $ circ_stratify oneq
     putStr "---\n"
-    print $ circ_matrixes myothercirc
+    putStrLn $ to_qmc $ circ_matrixes oneq
+    print $ to_qmc $ circ_matrixes oneq
