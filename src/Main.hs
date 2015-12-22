@@ -8,6 +8,7 @@ import Quipper.Monad
 import Quipper.Transformer
 import Debug.Trace
 
+import Control.Monad.State.Lazy
 import Control.Monad.Writer.Lazy
 import Control.Arrow
 import Data.List
@@ -17,26 +18,26 @@ import Data.Ratio
 import qualified Data.Map.Strict as Map
 
 data StrataState a b = StrataState {
-    strataState :: Map.Map b b,
-    composition :: Map.Map b [a] }
+    strataState :: Map.Map b Int,
+    composition :: Map.Map Int [a] }
 
-stratify :: (Num b, Ord b) => (a -> [b]) -> [a] -> [(b, [a])]
-stratify f = Map.toAscList . composition . foldr stratify' emptyState . map (id &&& f) . reverse where
+stratify :: Ord b => (a -> [b]) -> [a] -> [[a]]
+stratify f = map snd . Map.toAscList . composition . foldr stratify' emptyState . map (id &&& f) . reverse where
 	emptyState = StrataState Map.empty Map.empty
 
-stratify' :: (Ord b, Num b) => (a, [b]) -> StrataState a b -> StrataState a b
+stratify' :: Ord b => (a, [b]) -> StrataState a b -> StrataState a b
 stratify' (e, fe) (StrataState strata old) = StrataState newstrata new where
         newstratum = stratum fe strata
         newstrata = foldr (flip Map.insert $ newstratum + 1) strata fe
         new = Map.insertWith (++) newstratum [e] old
 
-stratum :: (Num b, Ord b) => [b] -> Map.Map b b -> b
+stratum :: Ord b => [b] -> Map.Map b Int -> Int
 stratum x s = foldr (max .  stratum') 0 x where
     stratum' b = Map.findWithDefault 0 b s
 
-strashow :: (Show a, Show b, Ord b, Num b) => [(b, [a])] -> String
-strashow xs = foldr (\ x y -> show' x ++ "\n" ++ y) "" $ xs where
-    show' (s, es) = show s ++ ": " ++ (foldr1 (\e o -> e ++ ", " ++ o) $ map show es)
+strashow :: Show a => [[a]] -> String
+strashow xs = foldr (\ x y -> show' x ++ "\n" ++ y) "" $ zip [1..] xs where
+    show' (s, es) = show (s :: Int) ++ ": " ++ (foldr1 (\e o -> e ++ ", " ++ o) $ map show es)
 
 data Transformed = Gate String [Int] [Int]
                  | Measure Int deriving Show
@@ -84,7 +85,7 @@ transformed :: Circuit -> Int -> Writer [Transformed] (Bindings Int Int)
 transformed circuit n = transform_circuit mytransformer circuit bindings where
     bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
-circ_stratify :: Tuple a => (a -> Circ b) -> [(Int, [Transformed])]
+circ_stratify :: Tuple a => (a -> Circ b) -> [[Transformed]]
 circ_stratify circ = stratify get_gates $ snd $ runWriter $ transformed extracted extracted_n where
     (extracted, extracted_n) = extract circ
 
@@ -98,29 +99,71 @@ get_gates (Measure q) = [q]
 -- qubit_max :: Int
 -- stratified :: [(Int, [TransGate])]
 
-circ_matrixes :: (Num a, Floating a, Tuple b) => (b -> Circ c) -> [(Int, Matrix a)]
-circ_matrixes circ = map (\(s, gs) -> (s, f gs)) stratified where
+-- make_tuples takes as input a list xs.
+-- each element x of xs represents a list of possibilities.
+-- make_tuples returns lists whose elements are chosen, in order, from each x
+-- for example make_tuples [[1, 2], [3, 4]] will return [[1, 3], [1, 4], [2, 3], [2, 4]]
+-- you can view the results as the possible "paths" through xs
+--
+-- make_tuples [[a,b,c],[d,e,f],[g,h,i]]
+--
+-- a    /- d -\      g
+--     /       \
+-- b -/    e    \    h
+--               \
+-- c       f      \- i -> [b, d, i]
+--
+make_tuples :: [[a]] -> [[a]]
+make_tuples [] = [[]]
+make_tuples (xs:yss) = do
+    x <- xs
+    p <- make_tuples yss
+    return (x:p)
+
+type Transitions a = (Int, [(Matrix a, Int)]) -- (from_state, [(transformation, to_state)])
+
+circ_matrixes :: (Num a, Floating a, Tuple b) => (b -> Circ c) -> [Transitions a]
+circ_matrixes circ = concat $ evalState result (0, 1) where
+    result = mapM f stratified
     stratified = circ_stratify circ
     size = 2 ^ qubit_max
-    gate_list = concatMap snd stratified
+    gate_list = concat stratified
     qubit_max = maximum $ concatMap get_gates gate_list
-    f gs = foldr (\g m -> gate_to_matrix qubit_max g * m) (identity size) gs
+    f gs = do
+        (from, to) <- get -- from is inclusive, to exclusive
+        let tree_size = to - from
+        let choices = map (gate_to_matrixes qubit_max) gs
+        let paths = make_tuples choices
+        let ms = map (foldr (*) (identity size)) paths
+        put (to, to + tree_size * length paths)
+        return $ do
+            i <- [0..tree_size - 1]
+            let ts = do
+                (j, m) <- zip [0..] ms
+                return (m, i * length paths + to + j)
+            return (i + from, ts)
 
-gate_to_matrix :: (Num a, Floating a) => Int -> Transformed -> Matrix a
-gate_to_matrix size (Gate name [q] []) = moving size sw m where
+gate_to_matrixes :: (Num a, Floating a) => Int -> Transformed -> [Matrix a]
+gate_to_matrixes size (Gate name [q] []) = [moving size sw m] where
     q' = q
     sw = []
     m = between (q'-1) (name_to_matrix 1 0 name) (size - q')
-gate_to_matrix size (Gate name [q] [c]) = moving size sw m where
+gate_to_matrixes size (Gate name [q] [c]) = [moving size sw m] where
     c' = min q c
     q' = max q c
     sw = (q', c'+1) : (if q < c then [(q, c)] else [])
     m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
-gate_to_matrix size (Measure q) = m where
-    m = between (q-1) (measure_matrix q) (size - q)
+gate_to_matrixes size (Measure q) = [m, m'] where
+    m = between (q-1) (measure_matrix 1) (size - q)
+    m' = between (q-1) (measure_matrix 2) (size - q)
 
 measure_matrix :: (Num a) => Int -> Matrix a
 measure_matrix i = matrix 2 2 gen where
+  gen (x, y) | x == i && y == i = 1
+  gen _ = 0
+
+measure_matrix' :: (Num a) => Int -> Matrix a
+measure_matrix' i = matrix 2 2 gen where
   gen (x, y) | x == i && y == i = 1
   gen _ = 0
 
@@ -242,29 +285,38 @@ double_meas :: (Qubit, Qubit) -> Circ (Bit, Bit)
 double_meas (q1, q2) = measure (q1, q2)
 
 --- Converter ---
-to_qmc :: [(Int, Matrix Expr)] -> String
-to_qmc sts = "qmc\n"
+to_qmc :: [Transitions Expr] -> String
+to_qmc ts = "qmc\n"
 --           const matrix asdf = [1,2;3,4];
 --           "mf2so([1,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0])
-          ++ concatMap (uncurry matrix_to_qmc) sts
+          ++ concatMap matrix_to_qmc (concatMap snd ts)
           ++ "module test\n"
-          ++ "  s: [0.." ++ show (length sts) ++ "] init 0;\n"
-          ++ concatMap (state_to_qmc . fst) sts
-          ++ "  [] (s = " ++ show (length sts) ++ ") -> (s' = " ++ show (length sts) ++ ");\n"
+          ++ "  s: [0.." ++ show l ++ "] init 0;\n"
+          ++ concatMap transition_to_qmc ts
+          ++ concatMap final_to_qmc finals
           ++ "endmodule" where
-    l = length sts
+    l = length ts
+    named = concatMap (map snd . snd) ts
+    finals = named \\ map fst ts
 
-matrix_to_qmc :: (Show a) => Int -> Matrix a -> String
-matrix_to_qmc s m = "const matrix A" ++ show s ++ " = [" ++ inner ++ "];\n" where
+final_to_qmc :: Int -> String
+final_to_qmc s = "  [] (s = " ++ show s ++ ") -> (s' = " ++ show s ++ ");\n"
+
+matrix_to_qmc :: Show a => (Matrix a, Int) -> String
+matrix_to_qmc (m, t) = "const matrix A" ++ show t ++ " = [" ++ inner ++ "];\n" where
     inner = concat $ intersperse ";" $ map sl $ toLists m
     sl l = concat $ intersperse "," $ map show l
 
-state_to_qmc :: Int -> String
-state_to_qmc s = "  [] (s = " ++ show s ++ ")"
+transition_to_qmc :: Transitions a -> String
+transition_to_qmc (f, ts) = "  [] (s = " ++ show f ++ ")"
               ++ " -> "
-              ++ "<<A" ++ show s
+              ++ concat (intersperse " + " (map transition_to_qmc' ts))
+              ++ ";\n"
+
+transition_to_qmc' :: (Matrix a, Int) -> String
+transition_to_qmc' (_, t) = "<<A" ++ show t
               ++ ">> : "
-              ++ "(s' = " ++ show (s + 1) ++ ");\n"
+              ++ "(s' = " ++ show t ++ ")"
 
 full_out :: Tuple a => (a -> Circ b) -> IO ()
 full_out c = do
