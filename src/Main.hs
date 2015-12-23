@@ -284,6 +284,14 @@ oneq q1 = do
 double_meas :: (Qubit, Qubit) -> Circ (Bit, Bit)
 double_meas (q1, q2) = measure (q1, q2)
 
+strange :: (Qubit, Qubit) -> Circ (Bit, Bit)
+strange (q1, q2) = do
+  c2 <- measure q2
+  hadamard q1
+  hadamard q1
+  c1 <- measure q1
+  return (c1, c2)
+
 --- Converter ---
 to_qmc :: [Transitions Expr] -> String
 to_qmc ts = "qmc\n"
@@ -291,11 +299,10 @@ to_qmc ts = "qmc\n"
 --           "mf2so([1,0,0,0; 0,0,0,0; 0,0,0,0; 0,0,0,0])
           ++ concatMap matrix_to_qmc (concatMap snd ts)
           ++ "module test\n"
-          ++ "  s: [0.." ++ show l ++ "] init 0;\n"
+          ++ "  s: [0.." ++ show (foldr max 0 named) ++ "] init 0;\n"
           ++ concatMap transition_to_qmc ts
           ++ concatMap final_to_qmc finals
           ++ "endmodule" where
-    l = length ts
     named = concatMap (map snd . snd) ts
     finals = named \\ map fst ts
 
@@ -330,6 +337,7 @@ full_out c = do
 
 main = do
   full_out deutsch
-  full_out oneq
-  full_out double_meas
+  --full_out oneq
+  --full_out double_meas
+  full_out strange
 
