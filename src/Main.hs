@@ -199,6 +199,7 @@ name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
 name_to_matrix 1 0 "not" = not_matrix
 name_to_matrix 1 0 "H" = hadamard_matrix
 name_to_matrix 1 1 "not" = cnot_matrix
+name_to_matrix 1 1 "W" = w_matrix
 
 -- |hadamard_matrix is the matrix for the Hadamard gate
 hadamard_matrix :: (Num a, Floating a) => Matrix a
@@ -228,6 +229,17 @@ swap_matrix = matrix 4 4 gen where
     gen (1, 1) = 1
     gen (2, 3) = 1
     gen (3, 2) = 1
+    gen (4, 4) = 1
+    gen _ = 0
+
+-- |w_matrix is the gate_W, the square root of the swap matrix
+w_matrix :: (Num a, Floating a) => Matrix a
+w_matrix = matrix 4 4 gen where
+    gen (1, 1) = 1
+    gen (2, 2) = (1 / sqrt 2)
+    gen (2, 3) = (1 / sqrt 2)
+    gen (3, 2) = (1 / sqrt 2)
+    gen (3, 3) = -(1 / sqrt 2)
     gen (4, 4) = 1
     gen _ = 0
 
@@ -315,6 +327,20 @@ deutsch (q1, q2) = do
     hadamard q1
     measure q1
 
+deutsch_mod :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit, Bit)
+deutsch_mod (q1, q2, q3) = do
+    hadamard q1
+    hadamard q2
+    hadamard q3
+    --qnot_at q2 `controlled` q1
+    --hadamard q1
+    measure (q1, q2,q3)
+
+circ_W :: (Qubit, Qubit) -> Circ (Bit, Bit)
+circ_W (q1, q2) = do
+    gate_W q1 q2
+    gate_W q2 q1
+    measure (q1, q2)
 
 oneq :: Qubit -> Circ Qubit
 oneq q1 = do
@@ -384,8 +410,8 @@ full_out c = do
     putStr "---\n"
 
 main = do
-  full_out deutsch
-  --full_out oneq
+  full_out deutsch_mod
+  full_out circ_W
   --full_out double_meas
-  full_out strange
+  --full_out strange
 
