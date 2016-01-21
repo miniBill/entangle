@@ -184,6 +184,11 @@ gate_to_matrices size (Gate name [q] [c]) = [moving size sw m] where
     q' = max q c
     sw = (q', c'+1) : (if q < c then [(q, c)] else [])
     m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
+gate_to_matrices size (Gate name [q1,q2] []) = [moving size sw m] where
+    q2' = min q1 q2
+    q1' = max q1 q2
+    sw = []--(q1', q2'+1) : (if q1 < q2 then [(q1, q2)] else [])
+    m = between (q2'-1) (name_to_matrix 2 0 name) (size - q1')
 gate_to_matrices size (Measure q) = [m, m'] where
     m = between (q-1) (measure_matrix 1) (size - q)
     m' = between (q-1) (measure_matrix 2) (size - q)
@@ -199,7 +204,8 @@ name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
 name_to_matrix 1 0 "not" = not_matrix
 name_to_matrix 1 0 "H" = hadamard_matrix
 name_to_matrix 1 1 "not" = cnot_matrix
-name_to_matrix 1 1 "W" = w_matrix
+name_to_matrix 2 0 "W" = w_matrix
+name_to_matrix 2 0 "swap" = swap_matrix
 
 -- |hadamard_matrix is the matrix for the Hadamard gate
 hadamard_matrix :: (Num a, Floating a) => Matrix a
@@ -339,6 +345,7 @@ deutsch_mod (q1, q2, q3) = do
 circ_W :: (Qubit, Qubit) -> Circ (Bit, Bit)
 circ_W (q1, q2) = do
     gate_W q1 q2
+    swap q1 q2
     gate_W q2 q1
     measure (q1, q2)
 
