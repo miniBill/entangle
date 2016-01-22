@@ -184,11 +184,13 @@ gate_to_matrices size (Gate name [q] [c]) = [moving size sw m] where
     q' = max q c
     sw = (q', c'+1) : (if q < c then [(q, c)] else [])
     m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
+
 gate_to_matrices size (Gate name [q1,q2] []) = [moving size sw m] where
     q2' = min q1 q2
     q1' = max q1 q2
-    sw = []--(q1', q2'+1) : (if q1 < q2 then [(q1, q2)] else [])
+    sw = (q1', q2'+1) : (if q1 > q2 then [(q1, q2)] else [])
     m = between (q2'-1) (name_to_matrix 2 0 name) (size - q1')
+
 gate_to_matrices size (Measure q) = [m, m'] where
     m = between (q-1) (measure_matrix 1) (size - q)
     m' = between (q-1) (measure_matrix 2) (size - q)
@@ -345,7 +347,6 @@ deutsch_mod (q1, q2, q3) = do
 circ_W :: (Qubit, Qubit) -> Circ (Bit, Bit)
 circ_W (q1, q2) = do
     gate_W q1 q2
-    swap q1 q2
     gate_W q2 q1
     measure (q1, q2)
 
@@ -365,6 +366,19 @@ strange (q1, q2) = do
   hadamard q1
   c1 <- measure q1
   return (c1, c2)
+
+inv_cnot :: (Qubit, Qubit) -> Circ (Qubit, Qubit)
+inv_cnot (q1, q2) = do
+    qnot_at q1 `controlled` q2
+    qnot_at q2 `controlled` q1
+    --qnot_at q1 `controlled` q2
+    return (q1, q2)
+
+test_multiple :: (Qubit, Qubit,Qubit) -> Circ (Qubit, Qubit,Qubit)
+test_multiple (q1, q2,q3) = do
+    gate_W q1 q2
+    gate_W q2 q3
+    return (q1, q2,q3)
 
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
@@ -417,8 +431,8 @@ full_out c = do
     putStr "---\n"
 
 main = do
-  full_out deutsch_mod
-  full_out circ_W
+  full_out test_multiple
+  --full_out circ_W
   --full_out double_meas
   --full_out strange
 
