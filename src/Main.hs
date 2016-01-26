@@ -182,15 +182,17 @@ gate_to_matrices size (Gate name [q] []) = [moving size sw m] where
 gate_to_matrices size (Gate name [q] [c]) = [moving size sw m] where
     c' = min q c
     q' = max q c
-    sw = (q', c'+1) : (if q < c then [(q, c)] else [])
-    m = between (c'-1) (name_to_matrix 1 1 name) (size - q')
-
+    swh = if q' == c'+1 then [] else [(q', c'+1)]
+    swt = if q < c then [(q, c)] else []
+    sw = swh ++ swt
+    m = between (c'-1) (name_to_matrix 1 1 name) (size - (c'+1))
 gate_to_matrices size (Gate name [q1,q2] []) = [moving size sw m] where
-    q2' = min q1 q2
-    q1' = max q1 q2
-    sw = (q1', q2'+1) : (if q1 > q2 then [(q1, q2)] else [])
-    m = between (q2'-1) (name_to_matrix 2 0 name) (size - q1')
-
+    q1' = min q1 q2
+    q2' = max q1 q2
+    swh = if q2' == q1'+1 then [] else [(q2', q1'+1)]
+    swt = if q2 < q1 then [(q1, q2)] else []
+    sw = swh ++ swt
+    m = between (q1'-1) (name_to_matrix 2 0 name) (size - (q1'+1))
 gate_to_matrices size (Measure q) = [m, m'] where
     m = between (q-1) (measure_matrix 1) (size - q)
     m' = between (q-1) (measure_matrix 2) (size - q)
@@ -378,7 +380,8 @@ test_multiple :: (Qubit, Qubit,Qubit) -> Circ (Qubit, Qubit,Qubit)
 test_multiple (q1, q2,q3) = do
     gate_W q1 q2
     gate_W q2 q3
-    return (q1, q2,q3)
+    --qnot_at q1 `controlled` q3
+    return (q1, q2, q3)
 
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
