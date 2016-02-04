@@ -207,69 +207,53 @@ measure_matrix i = matrix 2 2 gen where
   gen (x, y) | x == i && y == i = 1
   gen _ = 0
 
--- |name_to_matrix is the matrix for the given named gate
+-- |name_to_matrix is the matrix for the given named gate.
+-- It returns a matrix with an identity in the top left
+-- and the action in the bottom right.
 name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
-name_to_matrix 0 1 "not" = not_matrix
-name_to_matrix 1 1 "not" = cnot_matrix
-name_to_matrix 2 1 "not" = ccnot_matrix
-name_to_matrix 0 1 "H" = hadamard_matrix
-name_to_matrix 0 2 "W" = w_matrix
-name_to_matrix 0 2 "swap" = swap_matrix
+name_to_matrix c q n = matrix s s gen where
+    s = 2 ^ (c+q)
+    gen (x,y) = gen' i x' y' where
+        x' = x - (s-2)
+        y' = y - (s-2)
+        i = x' <= 0 || y' <= 0
+    gen' True  x' y' | x' == y' = 1
+                     | otherwise = 0
+    gen' False x' y' = name_to_gen n x' y'
+
+name_to_gen "not" = not_matrix
+name_to_gen "H" = hadamard_matrix
+name_to_gen "W" = w_matrix
+name_to_gen "swap" = swap_matrix
 
 -- |hadamard_matrix is the matrix for the Hadamard gate
-hadamard_matrix :: (Num a, Floating a) => Matrix a
-hadamard_matrix = (1 / sqrt 2) `scaleMatrix` matrix 2 2 gen where
-    gen (2, 2) = -1
-    gen _ = 1
+hadamard_matrix :: (Num a, Floating a) => Int -> Int -> a
+hadamard_matrix 2 2 = -1 / sqrt 2
+hadamard_matrix _ _ = 1 / sqrt 2
 
 -- |not_matrix is the matrix for the Not gate
-not_matrix :: Num a => Matrix a
-not_matrix = matrix 2 2 gen where
-    gen (1, 2) = 1
-    gen (2, 1) = 1
-    gen _ = 0
-
--- |cnot_matrix is the matrix for the controlled Not gate
-cnot_matrix :: Num a => Matrix a
-cnot_matrix = matrix 4 4 gen where
-    gen (1, 1) = 1
-    gen (2, 2) = 1
-    gen (3, 4) = 1
-    gen (4, 3) = 1
-    gen _ = 0
-
--- |ccnot_matrix is the matrix for the controlled Not gate
-ccnot_matrix :: Num a => Matrix a
-ccnot_matrix = matrix 8 8 gen where
-    gen (1, 1) = 1
-    gen (2, 2) = 1
-    gen (3, 3) = 1
-    gen (4, 4) = 1
-    gen (5, 5) = 1
-    gen (6, 6) = 1
-    gen (7, 8) = 1
-    gen (8, 7) = 1
-    gen _ = 0
+not_matrix :: Num a => Int -> Int -> a
+not_matrix 1 2 = 1
+not_matrix 2 1 = 1
+not_matrix _ _ = 0
 
 -- |swap_matrix is a matrix that swaps to qubits
-swap_matrix :: Num a => Matrix a
-swap_matrix = matrix 4 4 gen where
-    gen (1, 1) = 1
-    gen (2, 3) = 1
-    gen (3, 2) = 1
-    gen (4, 4) = 1
-    gen _ = 0
+swap_matrix :: Num a => Int -> Int -> a
+swap_matrix 1 1 = 1
+swap_matrix 2 3 = 1
+swap_matrix 3 2 = 1
+swap_matrix 4 4 = 1
+swap_matrix _ _ = 0
 
 -- |w_matrix is the gate_W, the square root of the swap matrix
-w_matrix :: (Num a, Floating a) => Matrix a
-w_matrix = matrix 4 4 gen where
-    gen (1, 1) = 1
-    gen (2, 2) = (1 / sqrt 2)
-    gen (2, 3) = (1 / sqrt 2)
-    gen (3, 2) = (1 / sqrt 2)
-    gen (3, 3) = -(1 / sqrt 2)
-    gen (4, 4) = 1
-    gen _ = 0
+w_matrix :: (Num a, Floating a) => Int -> Int -> a
+w_matrix 1 1 = 1
+w_matrix 2 2 = 1
+w_matrix 2 3 = 1 / sqrt 2
+w_matrix 3 2 = 1 / sqrt 2
+w_matrix 3 3 = -1 / sqrt 2
+w_matrix 4 4 = 1
+w_matrix _ _ = 0
 
 -- |moving returns a matrix representing:
 --   * moving the chosen qubits
@@ -291,7 +275,7 @@ swap_to_matrix size n m | n > m = swap_to_matrix size m n
                         | n == m = identity (2 ^ size)
                         | n < m - 1 = swap_to_matrix size n (m - 1) * swap_to_matrix size (m - 1) m
                         -- otherwise: n == m - 1
-                        | otherwise = between (n - 1) swap_matrix (size - m)
+                        | otherwise = between (n - 1) (matrix 4 4 $ uncurry swap_matrix) (size - m)
 
 -- |between takes a matrix and applies it to the chosen qubits,
 -- without modifying the other ones
