@@ -66,7 +66,7 @@ mytransformer (T_QGate name a b inv nc f) = f g where
     endpoint_to_int (Endpoint_Qubit x) = x
     endpoint_to_int (Endpoint_Bit x) = -x
     g gates g_controls controls = do
-        tell [Gate name gates (open controls)]
+        tell [Gate name (open controls) gates]
         return (gates, g_controls, controls)
 mytransformer (T_QMeas f) = f g where
     g qubit = do
@@ -94,6 +94,10 @@ instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
     size _ = 6
     tupleFromList (q1:q2:q3:q4:q5:q6:_) = (q1, q2, q3, q4, q5, q6)
 
+instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
+    size _ = 7
+    tupleFromList (q1:q2:q3:q4:q5:q6:q7:_) = (q1, q2, q3, q4, q5, q6, q7)
+
 -- |extract transforms a function returning a value in the 'Circ' monad
 -- into a 'Circuit' that can be processed further.
 extract :: Tuple a => (a -> Circ b) -> (Circuit, Int)
@@ -115,7 +119,7 @@ circ_stratify circ = stratify get_gates $ execWriter $ transformed extracted ext
 
 -- |get_gates returns the qubit numbers involved in a gate.
 get_gates :: Transformed -> [Int]
-get_gates (Gate _ qs cs) = qs ++ cs
+get_gates (Gate _ cs qs) = qs ++ cs
 get_gates (Measure q) = [q]
 
 -- circ_matrixes :: [(Int, [TransGate])] -> [(Int, Matrix)]
@@ -173,26 +177,26 @@ circ_matrices circ = concat $ evalState result (0, 1) where
                 return (m, i * length paths + to + j)
             return (i + from, ts)
 
+-- |generate_swaps takes a finite list of source qubits, a list of target qubits,
+-- and returns a list of swaps that moves the qubits into place
+generate_swaps [] _ = []
+generate_swaps (q:qs) (t:ts)
+    | q == t = generate_swaps qs ts
+    | otherwise = (q, t) : generate_swaps (map (sw q t) qs) ts
+
+-- |sw q t is a function that swaps q and t
+sw q t x | x == q = t
+         | x == t = q
+         | otherwise = x
+
 -- |gate_to_matrices takes a single gate and returns the list of matrices needed to represent it.
 gate_to_matrices :: (Num a, Floating a) => Int -> Transformed -> [Matrix a]
-gate_to_matrices size (Gate name [q] []) = [moving size sw m] where
-    q' = q
-    sw = []
-    m = between (q'-1) (name_to_matrix 1 0 name) (size - q')
-gate_to_matrices size (Gate name [q] [c]) = [moving size sw m] where
-    c' = min q c
-    q' = max q c
-    swh = if q' == c'+1 then [] else [(q', c'+1)]
-    swt = if q < c then [(q, c)] else []
-    sw = swh ++ swt
-    m = between (c'-1) (name_to_matrix 1 1 name) (size - (c'+1))
-gate_to_matrices size (Gate name [q1,q2] []) = [moving size sw m] where
-    q1' = min q1 q2
-    q2' = max q1 q2
-    swh = if q2' == q1'+1 then [] else [(q2', q1'+1)]
-    swt = if q2 < q1 then [(q1, q2)] else []
-    sw = swh ++ swt
-    m = between (q1'-1) (name_to_matrix 2 0 name) (size - (q1'+1))
+gate_to_matrices size (Gate name cs qs) = [moving size sw m] where
+    mi = foldr min size (cs ++ qs)
+    sw = reverse $ generate_swaps (cs ++ qs) [mi..]
+    lc = length cs
+    lq = length qs
+    m = between (mi-1) (name_to_matrix lc lq name) (size - (mi + lc + lq - 1))
 gate_to_matrices size (Measure q) = [m, m'] where
     m = between (q-1) (measure_matrix 1) (size - q)
     m' = between (q-1) (measure_matrix 2) (size - q)
@@ -205,11 +209,12 @@ measure_matrix i = matrix 2 2 gen where
 
 -- |name_to_matrix is the matrix for the given named gate
 name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
-name_to_matrix 1 0 "not" = not_matrix
-name_to_matrix 1 0 "H" = hadamard_matrix
+name_to_matrix 0 1 "not" = not_matrix
 name_to_matrix 1 1 "not" = cnot_matrix
-name_to_matrix 2 0 "W" = w_matrix
-name_to_matrix 2 0 "swap" = swap_matrix
+name_to_matrix 2 1 "not" = ccnot_matrix
+name_to_matrix 0 1 "H" = hadamard_matrix
+name_to_matrix 0 2 "W" = w_matrix
+name_to_matrix 0 2 "swap" = swap_matrix
 
 -- |hadamard_matrix is the matrix for the Hadamard gate
 hadamard_matrix :: (Num a, Floating a) => Matrix a
@@ -231,6 +236,19 @@ cnot_matrix = matrix 4 4 gen where
     gen (2, 2) = 1
     gen (3, 4) = 1
     gen (4, 3) = 1
+    gen _ = 0
+
+-- |ccnot_matrix is the matrix for the controlled Not gate
+ccnot_matrix :: Num a => Matrix a
+ccnot_matrix = matrix 8 8 gen where
+    gen (1, 1) = 1
+    gen (2, 2) = 1
+    gen (3, 3) = 1
+    gen (4, 4) = 1
+    gen (5, 5) = 1
+    gen (6, 6) = 1
+    gen (7, 8) = 1
+    gen (8, 7) = 1
     gen _ = 0
 
 -- |swap_matrix is a matrix that swaps to qubits
@@ -322,11 +340,12 @@ myothercirc q1 = do
 
 mycirc :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
 mycirc (q1, q2, q3, q4, q5, q6) = do
-    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q6
     qnot_at q2 `controlled` q3
     qnot_at q5 `controlled` q6
     qnot_at q4 `controlled` q5
     qnot_at q3 `controlled` q4
+    gate_W q1 q3
     return (q1, q2, q3, q4, q5, q6)
 
 deutsch :: (Qubit, Qubit) -> Circ Bit
@@ -337,14 +356,16 @@ deutsch (q1, q2) = do
     hadamard q1
     measure q1
 
-deutsch_mod :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit, Bit)
-deutsch_mod (q1, q2, q3) = do
+deutschJozsaNaive :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+deutschJozsaNaive (q1, q2, q3) = do
     hadamard q1
     hadamard q2
     hadamard q3
-    --qnot_at q2 `controlled` q1
-    --hadamard q1
-    measure (q1, q2,q3)
+    --qnot_at q3 `controlled` [q1,q2]
+    --qnot_at q2 `controlled` [q1,q3]
+    hadamard q1
+    hadamard q2
+    measure (q1, q2)
 
 circ_W :: (Qubit, Qubit) -> Circ (Bit, Bit)
 circ_W (q1, q2) = do
@@ -379,9 +400,22 @@ inv_cnot (q1, q2) = do
 test_multiple :: (Qubit, Qubit,Qubit) -> Circ (Qubit, Qubit,Qubit)
 test_multiple (q1, q2,q3) = do
     gate_W q1 q2
-    gate_W q2 q3
-    --qnot_at q1 `controlled` q3
+    gate_W q2 q1
+    qnot_at q1 `controlled` q3
     return (q1, q2, q3)
+
+test_seven :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+test_seven (q1, q2, q3, q4, q5, q6) = do
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q6
+    return (q1,q2,q3,q4,q5,q6)
 
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
@@ -435,7 +469,7 @@ full_out c = do
 
 main = do
   full_out test_multiple
-  --full_out circ_W
-  --full_out double_meas
+  --full_out mycirc
+  --full_out deutschJozsaNaive
   --full_out strange
 
