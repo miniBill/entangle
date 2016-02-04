@@ -3,3 +3,5 @@ dist
 *.hi
 *.dyn_hi
 *.dyn_o
+
+src/Main
