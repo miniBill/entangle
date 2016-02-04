@@ -211,11 +211,13 @@ measure_matrix i = matrix 2 2 gen where
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
 name_to_matrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
-name_to_matrix c q n = matrix s s gen where
-    s = 2 ^ (c+q)
+name_to_matrix c q n = matrix total_size total_size gen where
+    total_size = 2 ^ (c+q)
+    small_size = if q == 0 then 0 else 2 ^ q
+    big_size = total_size - small_size
     gen (x,y) = gen' i x' y' where
-        x' = x - (s-2)
-        y' = y - (s-2)
+        x' = x - big_size
+        y' = y - big_size
         i = x' <= 0 || y' <= 0
     gen' True  x' y' | x' == y' = 1
                      | otherwise = 0
