@@ -383,8 +383,8 @@ inv_cnot (q1, q2) = do
     --qnot_at q1 `controlled` q2
     return (q1, q2)
 
-test_multiple :: (Qubit, Qubit,Qubit) -> Circ (Qubit, Qubit,Qubit)
-test_multiple (q1, q2,q3) = do
+test_multiple :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
+test_multiple (q1, q2, q3) = do
     gate_W q1 q2
     gate_W q2 q1
     qnot_at q1 `controlled` q3
