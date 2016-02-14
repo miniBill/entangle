@@ -90,6 +90,14 @@ instance Tuple (Qubit, Qubit, Qubit) where
     size _ = 3
     tupleFromList (q1:q2:q3:_) = (q1, q2, q3)
 
+instance Tuple (Qubit, Qubit, Qubit, Qubit) where
+    size _ = 4
+    tupleFromList (q1:q2:q3:q4:_) = (q1, q2, q3, q4)
+
+instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit) where
+    size _ = 5
+    tupleFromList (q1:q2:q3:q4:q5:_) = (q1, q2, q3, q4,q5)
+
 instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
     size _ = 6
     tupleFromList (q1:q2:q3:q4:q5:q6:_) = (q1, q2, q3, q4, q5, q6)
@@ -97,6 +105,14 @@ instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
 instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
     size _ = 7
     tupleFromList (q1:q2:q3:q4:q5:q6:q7:_) = (q1, q2, q3, q4, q5, q6, q7)
+
+instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
+    size _ = 8
+    tupleFromList (q1:q2:q3:q4:q5:q6:q7:q8:_) = (q1, q2, q3, q4, q5, q6, q7,q8)
+
+instance Tuple (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) where
+    size _ = 9
+    tupleFromList (q1:q2:q3:q4:q5:q6:q7:q8:q9:_) = (q1, q2, q3, q4, q5, q6, q7,q8,q9)
 
 -- |extract transforms a function returning a value in the 'Circ' monad
 -- into a 'Circuit' that can be processed further.
@@ -224,6 +240,8 @@ name_to_matrix c q n = matrix total_size total_size gen where
     gen' False x' y' = name_to_gen n x' y'
 
 name_to_gen "not" = not_matrix
+name_to_gen "Z" = z_matrix
+name_to_gen "X" = not_matrix
 name_to_gen "H" = hadamard_matrix
 name_to_gen "W" = w_matrix
 name_to_gen "swap" = swap_matrix
@@ -238,6 +256,12 @@ not_matrix :: Num a => Int -> Int -> a
 not_matrix 1 2 = 1
 not_matrix 2 1 = 1
 not_matrix _ _ = 0
+
+-- |z_matrix is the matrix for the Z gate
+z_matrix :: Num a => Int -> Int -> a
+z_matrix 1 1 = 1
+z_matrix 2 2 = -1
+z_matrix _ _ = 0
 
 -- |swap_matrix is a matrix that swaps to qubits
 swap_matrix :: Num a => Int -> Int -> a
@@ -256,6 +280,7 @@ w_matrix 3 2 = 1 / sqrt 2
 w_matrix 3 3 = -1 / sqrt 2
 w_matrix 4 4 = 1
 w_matrix _ _ = 0
+
 
 -- |moving returns a matrix representing:
 --   * moving the chosen qubits
@@ -365,8 +390,8 @@ oneq q1 = do
   return q1
 
 
-double_meas :: (Qubit, Qubit) -> Circ (Bit, Bit)
-double_meas (q1, q2) = measure (q1, q2)
+double_meas :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+double_meas (q1, q2,q3) = measure (q1, q2)
 
 strange :: (Qubit, Qubit) -> Circ (Bit, Bit)
 strange (q1, q2) = do
@@ -390,8 +415,31 @@ test_multiple (q1, q2, q3) = do
     qnot_at q1 `controlled` q3
     return (q1, q2, q3)
 
-test_seven :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
-test_seven (q1, q2, q3, q4, q5, q6) = do
+grover_naive :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+grover_naive (q1,q2,q3) = do
+    hadamard_at q1
+    hadamard_at q2
+    hadamard_at q3
+    --gate_X_at q2
+    qnot_at q3 `controlled` [q1, q2]
+    --gate_X_at q2
+    hadamard_at q1
+    hadamard_at q2
+    gate_X_at q1
+    gate_X_at q2
+    hadamard_at q2
+    qnot_at q2 `controlled` q1
+    hadamard_at q2
+    gate_X_at q1
+    gate_X_at q2
+    hadamard_at q1
+    hadamard_at q2
+    hadamard_at q3
+    measure (q1,q2)
+
+
+test_matrix_6 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+test_matrix_6 (q1, q2, q3, q4, q5, q6) = do
     qnot_at q1 `controlled` q6
     qnot_at q1 `controlled` q5
     qnot_at q1 `controlled` q6
@@ -402,6 +450,68 @@ test_seven (q1, q2, q3, q4, q5, q6) = do
     qnot_at q1 `controlled` q2
     qnot_at q1 `controlled` q6
     return (q1,q2,q3,q4,q5,q6)
+
+
+test_matrix_5 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+test_matrix_5 (q1, q2, q3, q4, q5, q6, q7) = do
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q7
+    return (q1,q2,q3,q4,q5,q6,q7)
+
+test_matrix_4 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+test_matrix_4 (q1, q2, q3, q4, q5, q6, q7, q8) = do
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q7
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q6
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q8
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q8
+    return (q1,q2,q3,q4,q5,q6,q7,q8)
+
+test_matrix_3 :: (Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit)
+test_matrix_3 (q1, q2, q3, q4, q5) = do
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q5
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q5
+    return (q1,q2,q3,q4,q5)
+
+test_matrix_2 :: (Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit)
+test_matrix_2 (q1, q2, q3, q4) = do
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q4
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q4
+    return (q1,q2,q3,q4)
+
+test_matrix_1 :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
+test_matrix_1 (q1, q2, q3) = do
+    qnot_at q1 `controlled` q3
+    qnot_at q1 `controlled` q2
+    qnot_at q1 `controlled` q3
+    return (q1,q2,q3)
 
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
@@ -454,8 +564,9 @@ full_out c = do
     putStr "---\n"
 
 main = do
-  full_out test_multiple
-  --full_out mycirc
-  --full_out deutschJozsaNaive
+  --full_out grover_naive
+  full_out test_matrix_3
+  --full_out test_matrix_3
   --full_out strange
+
 

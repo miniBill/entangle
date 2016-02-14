@@ -1,0 +1,16 @@
+READ ME:
+
+A very quick read-me in order to be able to check some examples. 
+In the folder res you can find the Grover's tests. 
+
+To check the Translator you have to modify directly the Main.hs file in the src folder. 
+In the section "examples" you can add some code in Quipper style, if you feel unsure just check the other examples. Then you have to modify the fall_out being sure to write the name of your example.
+
+To compile the Main.hs file you have to open the terminal (be sure to be located in the src folder), type <quipper ./Main.hs> and then <./Main> to use it. 
+
+We will soon update this very short version of the READ ME.
+
+For any question related to this version please contact 
+anticoli.linda@spes.uniud.it
+
+
