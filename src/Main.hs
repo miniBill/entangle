@@ -513,6 +513,12 @@ test_matrix_1 (q1, q2, q3) = do
     qnot_at q1 `controlled` q3
     return (q1,q2,q3)
 
+test_if :: (Qubit, Qubit, Qubit) -> Circ Qubit
+test_if (q1, q2, q3) = do
+    m1 <- measure q1
+    bool1 <- dynamic_lift m1
+    return $ if bool1 then q2 else q3
+
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
 to_qmc :: [Transitions Expr] -> String
@@ -565,8 +571,8 @@ full_out c = do
 
 main = do
   --full_out grover_naive
-  full_out test_matrix_3
+  --full_out test_matrix_3
   --full_out test_matrix_3
   --full_out strange
-
+  full_out test_if
 
