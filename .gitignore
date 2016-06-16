@@ -5,3 +5,4 @@ dist
 *.dyn_o
 
 src/Main
+.stack-work
