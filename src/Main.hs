@@ -6,6 +6,7 @@ import Quipper
 import Quipper.Circuit
 import Quipper.Monad
 import Quipper.Transformer
+import Quipper.QData
 import Debug.Trace
 
 import Control.Monad.State.Lazy
@@ -519,6 +520,31 @@ test_if (q1, q2, q3) = do
     bool1 <- dynamic_lift m1
     return $ if bool1 then q2 else q3
 
+recCirc :: (Qubit, Qubit) -> Circ (Qubit, Qubit)
+recCirc (qa,qb) = do
+  qc <- hadamard qa
+  qd <- qnot qa `controlled` qb
+  m1 <- measure qc
+  m2 <- measure qd
+  bool1 <- dynamic_lift m1
+  bool2 <- dynamic_lift m2
+  if bool1 == 0 then
+       return (qc,qd)
+    else
+      do
+       recCirc (qc,qd)
+
+recCirc' :: (Qubit, Qubit) -> Circ ((Qubit, Qubit), (Bit, Bit))
+recCirc' (qa, qb) = do
+  qc <- hadamard qa
+  qd <- qnot qa `controlled` qb
+  m1 <- measure qc
+  m2 <- measure qd
+  return ((qc, qd), (m1, m2))
+
+recCircF :: (Bool, Bool) -> Bool
+recCircF (bool1, bool2) = bool1 == 0
+
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
 to_qmc :: [Transitions Expr] -> String
@@ -562,11 +588,17 @@ transition_to_qmc' (_, t) = "<<A" ++ show t
 full_out :: Tuple a => (a -> Circ b) -> IO ()
 full_out c = do
 --    putStr "---\n"
---    print $ circ_matrixes c
+--    print $ circ_matrices c
     putStr "---\n"
     putStr $ strashow $ circ_stratify c
     putStr "---\n"
     putStrLn $ to_qmc $ circ_matrices c
+    putStr "---\n"
+
+full_out_rec :: Tuple a => (a -> Circ (a, CType a)) -> (BType a -> Bool) -> IO ()
+full_out_rec c f = do
+    putStr "---\n"
+    print $ circ_matrices $ fmap fst . c
     putStr "---\n"
 
 main = do
@@ -574,5 +606,7 @@ main = do
   --full_out test_matrix_3
   --full_out test_matrix_3
   --full_out strange
-  full_out test_if
+  --full_out test_if
+  full_out_rec recCirc' recCircF
+  --print_simple ASCII recCirc
 
