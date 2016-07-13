@@ -528,22 +528,21 @@ recCirc (qa,qb) = do
   m2 <- measure qd
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2
-  if bool1 == 0 then
-       return (qc,qd)
+  if bool1 == 0
+    then
+      return (qc,qd)
     else
-      do
-       recCirc (qc,qd)
+      recCirc (qc,qd)
 
-recCirc' :: (Qubit, Qubit) -> Circ ((Qubit, Qubit), (Bit, Bit))
+recCirc' :: (Qubit, Qubit) -> Circ Bool
 recCirc' (qa, qb) = do
   qc <- hadamard qa
   qd <- qnot qa `controlled` qb
   m1 <- measure qc
   m2 <- measure qd
-  return ((qc, qd), (m1, m2))
-
-recCircF :: (Bool, Bool) -> Bool
-recCircF (bool1, bool2) = bool1 == 0
+  bool1 <- dynamic_lift m1
+  bool2 <- dynamic_lift m2
+  return $ bool1 == 0
 
 --- Converter ---
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
@@ -595,10 +594,10 @@ full_out c = do
     putStrLn $ to_qmc $ circ_matrices c
     putStr "---\n"
 
-full_out_rec :: Tuple a => (a -> Circ (a, CType a)) -> (BType a -> Bool) -> IO ()
-full_out_rec c f = do
+full_out_rec :: Tuple a => (a -> Circ Bool) -> IO ()
+full_out_rec c = do
     putStr "---\n"
-    print $ circ_matrices $ fmap fst . c
+    print $ circ_matrices c
     putStr "---\n"
 
 main = do
@@ -607,6 +606,6 @@ main = do
   --full_out test_matrix_3
   --full_out strange
   --full_out test_if
-  full_out_rec recCirc' recCircF
+  full_out_rec recCirc'
   --print_simple ASCII recCirc
 
