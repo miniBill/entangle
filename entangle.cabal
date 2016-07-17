@@ -7,11 +7,10 @@ license-file: COPYRIGHT
 data-dir: ""
  
 executable entangle
-    build-depends: QuickCheck -any, base -any, containers -any, superdoc -any,
-                   directory -any, easyrender -any, mtl -any, process -any,
-                   template-haskell -any, matrix -any
+    build-depends: base -any, quipper >=0.7 && <0.8, containers >= 0.5&& <0.6, matrix >=0.3 && <0.4, mtl >=2.1 && <2.2
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: SqMath QMonad.MC QMonad.Quipper QMonad SqMath
+    other-modules: SqMath
+    --QMonad.MC QMonad.Quipper QMonad SqMath
  
