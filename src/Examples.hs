@@ -53,8 +53,8 @@ deutschJozsaNaive (q1, q2, q3) = do
     hadamard q2
     measure (q1, q2)
 
-circ_W :: (Qubit, Qubit) -> Circ (Bit, Bit)
-circ_W (q1, q2) = do
+circW :: (Qubit, Qubit) -> Circ (Bit, Bit)
+circW (q1, q2) = do
     gate_W q1 q2
     gate_W q2 q1
     measure (q1, q2)
@@ -65,8 +65,8 @@ oneq q1 = do
   return q1
 
 
-double_meas :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
-double_meas (q1, q2, q3) = measure (q1, q2)
+doubleMeas :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+doubleMeas (q1, q2, q3) = measure (q1, q2)
 
 strange :: (Qubit, Qubit) -> Circ (Bit, Bit)
 strange (q1, q2) = do
@@ -76,22 +76,22 @@ strange (q1, q2) = do
   c1 <- measure q1
   return (c1, c2)
 
-inv_cnot :: (Qubit, Qubit) -> Circ (Qubit, Qubit)
-inv_cnot (q1, q2) = do
+invCnot :: (Qubit, Qubit) -> Circ (Qubit, Qubit)
+invCnot (q1, q2) = do
     qnot_at q1 `controlled` q2
     qnot_at q2 `controlled` q1
     --qnot_at q1 `controlled` q2
     return (q1, q2)
 
-test_multiple :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
-test_multiple (q1, q2, q3) = do
+testMultiple :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
+testMultiple (q1, q2, q3) = do
     gate_W q1 q2
     gate_W q2 q1
     qnot_at q1 `controlled` q3
     return (q1, q2, q3)
 
-grover_naive :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
-grover_naive (q1,q2,q3) = do
+groverNaive :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+groverNaive (q1,q2,q3) = do
     hadamard_at q1
     hadamard_at q2
     hadamard_at q3
@@ -113,8 +113,8 @@ grover_naive (q1,q2,q3) = do
     measure (q1,q2)
 
 
-test_matrix_6 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
-test_matrix_6 (q1, q2, q3, q4, q5, q6) = do
+testMatrix_6 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+testMatrix_6 (q1, q2, q3, q4, q5, q6) = do
     qnot_at q1 `controlled` q6
     qnot_at q1 `controlled` q5
     qnot_at q1 `controlled` q6
@@ -127,8 +127,8 @@ test_matrix_6 (q1, q2, q3, q4, q5, q6) = do
     return (q1,q2,q3,q4,q5,q6)
 
 
-test_matrix_5 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
-test_matrix_5 (q1, q2, q3, q4, q5, q6, q7) = do
+testMatrix_5 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+testMatrix_5 (q1, q2, q3, q4, q5, q6, q7) = do
     qnot_at q1 `controlled` q7
     qnot_at q1 `controlled` q6
     qnot_at q1 `controlled` q7
@@ -142,8 +142,8 @@ test_matrix_5 (q1, q2, q3, q4, q5, q6, q7) = do
     qnot_at q1 `controlled` q7
     return (q1,q2,q3,q4,q5,q6,q7)
 
-test_matrix_4 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
-test_matrix_4 (q1, q2, q3, q4, q5, q6, q7, q8) = do
+testMatrix_4 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
+testMatrix_4 (q1, q2, q3, q4, q5, q6, q7, q8) = do
     qnot_at q1 `controlled` q8
     qnot_at q1 `controlled` q7
     qnot_at q1 `controlled` q8
@@ -161,8 +161,8 @@ test_matrix_4 (q1, q2, q3, q4, q5, q6, q7, q8) = do
     qnot_at q1 `controlled` q8
     return (q1,q2,q3,q4,q5,q6,q7,q8)
 
-test_matrix_3 :: (Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit)
-test_matrix_3 (q1, q2, q3, q4, q5) = do
+testMatrix_3 :: (Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit)
+testMatrix_3 (q1, q2, q3, q4, q5) = do
     qnot_at q1 `controlled` q5
     qnot_at q1 `controlled` q4
     qnot_at q1 `controlled` q5
@@ -172,8 +172,8 @@ test_matrix_3 (q1, q2, q3, q4, q5) = do
     qnot_at q1 `controlled` q5
     return (q1,q2,q3,q4,q5)
 
-test_matrix_2 :: (Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit)
-test_matrix_2 (q1, q2, q3, q4) = do
+testMatrix_2 :: (Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit)
+testMatrix_2 (q1, q2, q3, q4) = do
     qnot_at q1 `controlled` q4
     qnot_at q1 `controlled` q3
     qnot_at q1 `controlled` q4
@@ -181,8 +181,8 @@ test_matrix_2 (q1, q2, q3, q4) = do
     qnot_at q1 `controlled` q4
     return (q1,q2,q3,q4)
 
-test_matrix_1 :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
-test_matrix_1 (q1, q2, q3) = do
+testMatrix_1 :: (Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit)
+testMatrix_1 (q1, q2, q3) = do
     qnot_at q1 `controlled` q3
     qnot_at q1 `controlled` q2
     qnot_at q1 `controlled` q3

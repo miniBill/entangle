@@ -11,5 +11,5 @@ executable entangle
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
-    other-modules: SqMath
- 
+    other-modules:
+    ghc-options:     -Wall
