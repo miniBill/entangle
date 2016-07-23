@@ -54,13 +54,13 @@ getGates (Measure q) = [q]
 -- |'Transitions' represent the list of transitions from a state to other states,
 -- together with the respective matrices.
 data Transitions v = Transitions {
-    trFromState :: StateName,
-    trDestinations :: [(StateName, Matrix v)]
+    trFromState :: StateName,                  -- ^ state from which the transitions start
+    trDestinations :: [(StateName, Matrix v)]  -- ^ destinations and matrices
 }
 
 data StateName = StateName {
-    snId :: Int,
-    snBs :: [Bool]
+    snId :: Integer,         -- ^ state id
+    snBs :: [Bool]           -- ^ boolean values in the state
     } deriving (Ord, Eq)
 
 instance Show StateName where
