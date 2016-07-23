@@ -2,9 +2,10 @@
 
 module EntangleMonad where
 
-import Control.Monad.State.Lazy
-import Control.Monad.Writer.Lazy
+import Data.Function
 import Data.Matrix
+import Data.Map.Lazy (Map)
+import qualified Data.Map.Lazy as DM
 
 import Quipper
 import Quipper.Circuit
@@ -16,63 +17,88 @@ import MatrixExtra
 import QTuple
 import Utils
 
--- |'Transformed' contains the minimal information needed
--- to translate a quantum gate to QPMC.
-data Transformed = Gate String [Int] [Int]
-                 | Measure Int deriving Show
+type BitState = Map BitId Bool
+
+data EntangleMonad a = EntangleMonad {
+    untangle :: BitState -> CircTree (BitState, a)
+}
+
+instance Monad EntangleMonad where
+    return x = EntangleMonad (\bs -> LeafNode (bs, x))
+    x >>= f = EntangleMonad $ \bs -> do
+        (bs', y) <- untangle x bs
+        untangle (f y) bs'
+
+data CircTree a
+    = GateNode String [QubitId] [B_Endpoint QubitId BitId] (CircTree a)
+    | MeasureNode QubitId (CircTree a) (CircTree a)
+    | LeafNode a
+
+instance Monad CircTree where
+    return = LeafNode
+    (GateNode n qs cs t) >>= f = GateNode n qs cs (t >>= f)
+    (MeasureNode q l r) >>= f = MeasureNode q (l >>= f) (r >>= f)
+    (LeafNode x) >>= f = f x
+
+transformGate :: String -> [QubitId] -> [B_Endpoint QubitId BitId] -> EntangleMonad ()
+transformGate name qs cs = undefined
+
+transformMeasure :: QubitId -> EntangleMonad BitId
+transformMeasure i = EntangleMonad res where
+    res bs = MeasureNode i l r where
+        lastBit = foldr (max . unbit) 0 $ DM.keys bs
+        new = BitId $ 1 + lastBit
+        
+        bsT = DM.insert new True bs
+        l = LeafNode (bsT, new)
+        
+        bsF = DM.insert new False bs
+        r = LeafNode (bsF, new)
+
+data StateName = StateName {
+    snId :: Integer,  -- ^ state id
+    snBs :: [Bool]    -- ^ boolean values in the state
+} deriving (Ord, Eq)
+
+instance Show StateName where
+    show (StateName i bs) = show i ++ "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
+
+newtype QubitId = QubitId { unqubit :: Int }
+newtype BitId = BitId { unbit :: Int } deriving (Eq, Ord)
 
 -- |mytransformer is the main transformer.
 -- it used to extract the needed information from a Quipper circuit.
-mytransformer :: Transformer (Writer [Transformed]) Int Int
+mytransformer :: Transformer EntangleMonad QubitId BitId
 mytransformer (T_QGate name a b inv nc f) = f g where
-    open = map (\(Signed x _) -> endpoint_to_int x)
-    endpoint_to_int (Endpoint_Qubit x) = x
-    endpoint_to_int (Endpoint_Bit x) = -x
-    g gates g_controls controls = do
-        tell [Gate name (open controls) gates]
-        return (gates, g_controls, controls)
-mytransformer (T_QMeas f) = f g where
-    g qubit = do
-        tell [Measure qubit]
-        return qubit
+    open (Signed _ False) = error "Negative controls are not supported yet"
+    open (Signed x True) = x
+    g wires g_controls controls = do
+        transformGate name wires (map open controls)
+        return (wires, g_controls, controls)
+mytransformer (T_QMeas f) = f transformMeasure
 
 -- |transformed takes a 'Circuit' with its arity and returns the list of 'Transformed' gates.
-transformed :: Circuit -> Int -> [Transformed]
-transformed circuit n = execWriter . void $ transform_circuit mytransformer circuit bindings where
-    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
+-- transformed :: Circuit -> Int -> [Transformed]
+-- transformed circuit n = execWriter . void $ transform_circuit mytransformer circuit bindings where
+--     bindings = foldr (\i -> bind_qubit (qubit_of_wire i) i) bindings_empty [1..n]
 
 -- |getGates returns the qubit numbers involved in a gate.
-getGates :: Transformed -> [Int]
-getGates (Gate _ cs qs) = qs ++ cs
-getGates (Measure q) = [q]
+-- getGates :: Transformed -> [Int]
+-- getGates (Gate _ cs qs) = qs ++ cs
+-- getGates (Measure q) = [q]
 
 -- circMatrixes :: [(Int, [TransGate])] -> [(Int, Matrix)]
 -- f :: [TransGate] -> Matrix
 -- size :: Int = 2 ^ qubit
 -- qubit_max :: Int
 
--- |'Transitions' represent the list of transitions from a state to other states,
--- together with the respective matrices.
-data Transitions v = Transitions {
-    trFromState :: StateName,                  -- ^ state from which the transitions start
-    trDestinations :: [(StateName, Matrix v)]  -- ^ destinations and matrices
-}
-
-data StateName = StateName {
-    snId :: Integer,         -- ^ state id
-    snBs :: [Bool]           -- ^ boolean values in the state
-    } deriving (Ord, Eq)
-
-instance Show StateName where
-    show (StateName i bs) = show i ++ "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
-
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
-circMatrices :: (Num a, Floating a, QTuple b) => (b -> Circ c) -> [Transitions a]
-circMatrices circ = undefined where -- concat $ evalState result (0, 1)
-    arg = tupleFromList $ map qubit_of_wire [1..]
-    extracted_n = size arg
-    foo = circ arg
+-- circMatrices :: (Num a, Floating a, QTuple b) => (b -> Circ c) -> [MTree a c]
+-- circMatrices circ = undefined where -- concat $ evalState result (0, 1)
+--     arg = tupleFromList $ map qubit_of_wire [1..]
+--     extracted_n = size arg
+--     foo = circ arg
     {-result = f gate_list
     --gate_list = circ_transform circ
     size = 2 ^ qubit_max
@@ -105,16 +131,16 @@ sw q t x | x == q = t
          | otherwise = x
 
 -- |gateToMatrices takes a single gate and returns the list of matrices needed to represent it.
-gateToMatrices :: (Num a, Floating a) => Int -> Transformed -> [Matrix a]
-gateToMatrices size (Gate name cs qs) = [moving size sw m] where
-    mi = foldr min size (cs ++ qs)
-    sw = reverse $ generateSwaps (cs ++ qs) [mi..]
-    lc = length cs
-    lq = length qs
-    m = between (mi-1) (nameToMatrix lc lq name) (size - (mi + lc + lq - 1))
-gateToMatrices size (Measure q) = [m, m'] where
-    m = between (q-1) (measureMatrix 1) (size - q)
-    m' = between (q-1) (measureMatrix 2) (size - q)
+-- gateToMatrices :: (Num a, Floating a) => Int -> Transformed -> [Matrix a]
+-- gateToMatrices size (Gate name cs qs) = [moving size sw m] where
+--     mi = foldr min size (cs ++ qs)
+--     sw = reverse $ generateSwaps (cs ++ qs) [mi..]
+--     lc = length cs
+--     lq = length qs
+--     m = between (mi-1) (nameToMatrix lc lq name) (size - (mi + lc + lq - 1))
+-- gateToMatrices size (Measure q) = [m, m'] where
+--     m = between (q-1) (measureMatrix 1) (size - q)
+--     m' = between (q-1) (measureMatrix 2) (size - q)
 
 -- |measureMatrix is the matrix for the gate measuring the i-th qubit
 measureMatrix :: (Num a) => Int -> Matrix a
