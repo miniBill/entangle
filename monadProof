@@ -1,0 +1,153 @@
+Monad laws for CircTree
+=======================
+
+    return x >>= f  =  f x
+    ----------------------
+
+LeafNode x >>= f = f x
+
+f x = f x OK
+
+
+    m >>= return  =  m
+    ----------------------
+
+m >>= LeafNode = m
+
+-- by structural induction on y --
+
+case m of
+    (LeafNode x) -> (LeafNode x) >>= LeafNode = (LeafNode x)
+                    LeafNode x = LeafNode x OK
+    (GateNode n qs cs x) -> (GateNode n qs cs x) >>= LeafNode = (GateNode n qs cs x)
+                            (GateNode n qs cs (x >>= LeafNode)) = (GateNode n qs cs x)
+                            by induction!
+                            (GateNode n qs cs x) = (GateNode n qs cs x) OK
+    (MeasureNode q b l r) -> analogue to GateNode OK
+
+OK
+
+
+    m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+    ------------------------------------------
+
+-- again, structural induction on m --
+
+case m of
+    (LeafNode y) ->
+        (LeafNode y) >>= (\x -> k x >>= h) = ((LeafNode y) >>= k) >>= h
+
+        (\x -> k x >>= h) y = (k y) >>= h
+
+        k y >>= h = k y >>= h OK
+
+    (MeasureNode q b l r) ->
+        (MeasureNode q b l r) >>= (\x -> k x >>= h) = ((MeasureNode q b l r) >>= k) >>= h
+
+        (MeasureNode q b (l >>= (\x -> k x >>= h)) (r >>= (\x -> k x >>= h))) = (MeasureNode q b (l >>= k) (r >>= k)) >>= h
+        by induction!
+        (MeasureNode q b ((l >>= k) >>= h) ((r >>= k) >>= h)) = (MeasureNode q b ((l >>= k) >>= h) ((r >>= k) >>= h)) OK
+
+    (GateNode n qs cs x) -> analogue to MeasureNode
+
+Monad laws for EntangleMonad
+============================
+
+    return x >>= f  =  f x
+    ----------------------
+
+EntangleMonad (\bs -> LeafNode (bs, x)) >>= f = f x
+
+EntangleMonad (\bs -> do
+    (bs', y) <- (\bs -> LeafNode (bs, x)) bs
+    untangle (f y) bs') = f x
+
+EntangleMonad (\bs -> do
+    (bs', y) <- LeafNode (bs, x)
+    untangle (f y) bs') = f x
+
+EntangleMonad (\bs -> 
+    LeafNode (bs, x) >>= (\(bs', y) -> untangle (f y) bs')) = f x
+
+EntangleMonad (\bs -> 
+    (\(bs', y) -> untangle (f y) bs') (bs, x)) = f x
+
+EntangleMonad (\bs -> untangle (f x) bs)) = f x
+
+EntangleMonad (untangle (f x)) = f x
+
+f x = f x OK
+
+
+    m >>= return  =  m
+    ----------------------
+
+EntangleMonad (\bs -> do
+    (bs', y) <- untangle x bs
+    untangle (return y) bs') = x
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) ->
+    untangle (return y) bs')) = x
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) ->
+    untangle (EntangleMonad (\bs -> LeafNode (bs, y))) bs')) = x
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) ->
+    (\bs -> LeafNode (bs, y)) bs')) = x
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) ->
+    LeafNode (bs', y))) = x
+
+EntangleMonad (\bs -> untangle x bs >>= LeafNode) = x
+
+EntangleMonad (\bs -> untangle (EntangleMonad (\bs -> y)) bs >>= LeafNode) = EntangleMonad (\bs -> y)
+
+EntangleMonad (\bs -> (\bs -> y) bs >>= LeafNode) = EntangleMonad (\bs -> y)
+
+EntangleMonad (\bs -> y >>= LeafNode) = EntangleMonad (\bs -> y)
+
+y >>= LeafNode = y
+by the analogue rule for CircTree
+
+y = y OK
+
+    m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+    ------------------------------------------
+
+m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+
+EntangleMonad (\bs -> do
+        (bs', y) <- untangle x bs
+        untangle (f y) bs') >>= (\x -> k x >>= h)
+=
+(EntangleMonad (\bs -> do
+    (bs', y) <- untangle x bs
+    untangle (f y) bs') >>= k) >>= h
+
+EntangleMonad (\bs -> do
+        (bs', y) <- untangle x bs
+        untangle ((\x -> k x >>= h) y) bs')
+=
+EntangleMonad (\bs -> do
+    (bs', y) <- untangle x bs
+    untangle (k y) bs') >>= h
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y >>= h) bs'))
+=
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y) bs')) >>= h
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y >>= h) bs'))
+=
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y) bs')) >>= h
+
+EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y >>= h) bs'))
+=
+EntangleMonad (\bs -> do
+        (bs', y) <- untangle (EntangleMonad (\bs -> untangle x bs >>= (\(bs', y) -> untangle (k y) bs'))) bs
+        untangle (h y) bs')
+
+untangle x bs >>= (\(bs', y) -> untangle (k y >>= h) bs')
+=
+(untangle x bs >>= (\(bs', y) -> untangle (k y) bs')) >>= (\(bs', y) -> untangle (h y) bs')
+
+We can use (on CircTree) m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h

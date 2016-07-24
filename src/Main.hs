@@ -15,16 +15,17 @@ fullOut c = do
     putStr "---\n"
     let tree = circToTree c
     print tree
-    --let transitions = circMatrices c
-    --putStrLn $ toQpmc transitions
+    let transitions = circMatrices c
+    putStrLn $ toQpmc transitions
     putStr "---\n"
 
 main :: IO ()
-main =
-  --fullOut grover_naive
-  --fullOut test_matrix_3
-  --fullOut test_matrix_3
-  --fullOut strange
-  --fullOut mycirc
-  --fullOut test_if
-  fullOut recCirc'
+main = fullOut
+  --grover_naive
+  --test_matrix_3
+  --test_matrix_3
+  --strange
+  --mycirc
+  --test_if
+  --recCirc'
+  branchCirc

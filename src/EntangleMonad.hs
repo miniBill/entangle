@@ -93,7 +93,7 @@ newtype BitId = BitId { unbit :: Int } deriving (Eq, Ord)
 -- |mytransformer is the main transformer.
 -- it used to extract the needed information from a Quipper circuit.
 mytransformer :: Transformer EntangleMonad QubitId BitId
-mytransformer g | trace (show g) False = undefined
+--mytransformer g | trace (show g) False = undefined
 mytransformer (T_QGate name _ _ _ _ f) = f g where
     open (Signed _ False) = error "Negative controls are not supported yet"
     open (Signed x True) = x
@@ -123,7 +123,7 @@ showIndented i x = indent ++ replace (show x) where
 -- |buildTree takes a 'Circuit', its arity and returns a tree representing it.
 --buildTree :: DBCircuit x -> Int -> CircTree x
 buildTree :: Show x => DBCircuit x -> Int -> CircTree x
-buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
+-- buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
 buildTree circuit n = fmap (fst . snd) res where
     res = untangle monad DM.empty
     monad = transform_dbcircuit mydtransformer circuit bindings
