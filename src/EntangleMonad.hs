@@ -18,7 +18,7 @@ import Quipper.Transformer
 
 type BitState = Map BitId Bool
 
-data EntangleMonad a = EntangleMonad {
+newtype EntangleMonad a = EntangleMonad {
     untangle :: BitState -> CircTree (BitState, a)
 }
 
@@ -29,7 +29,11 @@ instance Monad EntangleMonad where
         untangle (f y) bs'
 
 data CircTree a
-    = GateNode String [QubitId] [B_Endpoint QubitId BitId] (CircTree a)
+    = GateNode
+        String       -- ^ name 
+        [QubitId]    -- ^ affected qubits
+        [QubitId]    -- ^ controls
+        (CircTree a) -- ^ child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
     | LeafNode a
 
@@ -54,9 +58,7 @@ instance Show a => Show (CircTree a) where
         child (LeafNode _) = []
         show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on qubits " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
             qubits   = intercalate ", " $ map (show . unqubit) qs
-            controls = intercalate ", " $ map showe cs
-            showe (Endpoint_Qubit i) = "Q" ++ show (unqubit i)
-            showe (Endpoint_Bit i) = "B" ++ show (unbit i)
+            controls = intercalate ", " $ map (show . unqubit) cs
         show' (MeasureNode q b _ _) = "MeasureNode on qubit " ++ show (unqubit q) ++ " producing bit " ++ show (unbit b)
         show' (LeafNode x) = "LeafNode of " ++ show x
 
@@ -66,7 +68,7 @@ showTree i sf cf t = indent i ++ sf t ++ concatMap (\c -> "\n" ++ showTree (i+1)
 indent :: Int -> String
 indent i = replicate (4*i) ' '
 
-transformGate :: String -> [QubitId] -> [B_Endpoint QubitId BitId] -> EntangleMonad ()
+transformGate :: String -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformGate name qs cs = EntangleMonad res where
     res bs = GateNode name qs cs $ LeafNode (bs, ())
 
@@ -98,11 +100,15 @@ mytransformer (T_QGate name _ _ _ _ f) = f g where
     open (Signed _ False) = error "Negative controls are not supported yet"
     open (Signed x True) = x
     g wires g_controls controls = do
-        transformGate name wires (map open controls)
+        transformGate name wires (map (assumeQubit . open) controls)
         return (wires, g_controls, controls)
 mytransformer (T_QMeas f) = f transformMeasure
 mytransformer (T_DTerm _ f) = f (const $ return ())
 mytransformer g = error $ "Gate \"" ++ show g ++ "\" is not supported yet"
+
+assumeQubit :: B_Endpoint QubitId BitId -> QubitId
+assumeQubit (Endpoint_Qubit qi) = qi
+assumeQubit (Endpoint_Bit _) = error "Using bits as controls is not supported yet"
 
 mydtransformer :: DynamicTransformer EntangleMonad QubitId BitId
 mydtransformer = DT mytransformer (error "boxed circuits missing") transformDynamicLifting
@@ -123,7 +129,7 @@ showIndented i x = indent ++ replace (show x) where
 -- |buildTree takes a 'Circuit', its arity and returns a tree representing it.
 --buildTree :: DBCircuit x -> Int -> CircTree x
 buildTree :: Show x => DBCircuit x -> Int -> CircTree x
--- buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
+--buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
 buildTree circuit n = fmap (fst . snd) res where
     res = untangle monad DM.empty
     monad = transform_dbcircuit mydtransformer circuit bindings

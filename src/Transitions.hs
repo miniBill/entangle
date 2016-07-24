@@ -1,6 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Transitions where
 
+import qualified Data.Foldable as DF
 import Data.Matrix
+import qualified Data.Map.Lazy as DM
 
 import Quipper
 import Quipper.Circuit
@@ -14,10 +18,22 @@ import QTuple
 data StateName = StateName {
     snId :: Integer,  -- ^ state id
     snBs :: [Bool]    -- ^ boolean values in the state
-} deriving (Ord, Eq)
+} deriving Eq
+
+instance Ord StateName where
+    compare a b
+        | snId a < snId b = LT
+        | snId a > snId b = GT
+        | otherwise = compare' (snBs a) (snBs b) where
+            compare' [] [] = EQ
+            compare' [] _ = LT
+            compare' _ [] = GT
+            compare' (True:_) (False:_) = LT
+            compare' (False:_) (True:_) = GT
+            compare' (_:as) (_:bs) = compare' as bs
 
 instance Show StateName where
-    show (StateName i bs) = show i ++ "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
+    show (StateName i bs) = show i ++ if null bs then "" else "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
 
 data Transitions v = Transitions {
     trFromState :: StateName,
@@ -28,7 +44,7 @@ instance Show v => Show (Transitions v) where
     show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
 
 data Transition v = Transition {
-    trMatrix :: Matrix v,
+    trMatrix :: Maybe (Matrix v),
     trToState :: StateName
 }
 
@@ -38,8 +54,8 @@ instance (Show v) => Show (Transition v) where
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
 --circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
-circMatrices :: (Num v, Floating v, QTuple a, Show b) => (a -> Circ b) -> [Transitions v]
-circMatrices = treeToTransitions . circToTree where
+circMatrices :: (Num v, Floating v, QTuple a, Show b) => (b -> [Transition v]) -> (a -> Circ b) -> [Transitions v]
+circMatrices final = treeToTransitions final . circToTree where
 
 --circToTree :: QTuple a => (a -> Circ b) -> CircTree b
 circToTree :: Show b => QTuple a => (a -> Circ b) -> CircTree b
@@ -49,31 +65,52 @@ circToTree mcirc = tree where
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (Num v, Floating v, Show b) => CircTree b -> [Transitions v]
-treeToTransitions (LeafNode _) = []
---     result = f gate_list
---     gate_list = buildTree circ
---     size = 2 ^ qubit_max
---     qubit_max = maximum $ concatMap getGates gate_list
---     f :: [Transformed] -> State (Int, Int) [(Int, [(Matrix Double, Int)])]
---     f gs = do
---         (from, to) <- get -- from is inclusive, to exclusive
---         let tree_size = to - from
---         let choices = map (gateToMatrices qubit_max) gs
---         let paths = makeTuples choices
---         let ms = map (foldr (*) (identity size)) paths
---         put (to, to + tree_size * length paths)
---         return $ do
---             i <- [0..tree_size - 1]
---             let ts = do
---                 (j, m) <- zip [0..] ms
---                 return (m, i * length paths + to + j)
---                 return (i + from, ts)
+treeToTransitions :: (Num v, Floating v, Show b) => (b -> [Transition v]) -> CircTree b -> [Transitions v]
+treeToTransitions final t = go (StateName 0 []) t where
+    wires :: [QubitId]
+    wires = getWires t
+    qubit_max :: Int
+    qubit_max = foldr (max . unqubit) 0 wires
+    size = 2 ^ qubit_max
+    go sn (LeafNode x) = if null f then [] else [Transitions sn $ f] where
+        f = final x
+    go sn@(StateName i bs) (GateNode name qs cts c) = [Transitions sn [tr]] ++ go state' c where
+        tr = Transition (Just mat) state'
+        mat = gateToMatrix size name qs cts
+        state' = StateName (i+1) bs
+    go sn@(StateName i bs) (MeasureNode qi b l r) = [Transitions sn [lt, rt]] ++ go ls l ++ go rs r where
+        q = unqubit qi
 
--- |getGates returns the qubit numbers involved in a gate.
--- getGates :: Transformed -> [Int]
--- getGates (Gate _ cs qs) = qs ++ cs
--- getGates (Measure q) = [q]
+        lmat = between (q-1) (measureMatrix 1) (size - q)
+        ls = StateName (i+1) (bs ++ [True])
+        lt = Transition (Just lmat) ls
+
+        rmat = between (q-1) (measureMatrix 2) (size - q)
+        rs = StateName (i+1) (bs ++ [False])
+        rt = Transition (Just rmat) rs
+
+-- |getWires returns the qubit numbers involved in a gate.
+--getWires :: CircTree a -> [Int]
+getWires :: Show a => CircTree a -> [QubitId]
+getWires (LeafNode _) = []
+getWires (GateNode _ qs cs c) = qs ++ cs ++ getWires c
+getWires (MeasureNode q _ l r) = q : getWires l ++ getWires r
+
+-- |sw q t is a function that swaps q and t
+sw :: Eq a => a -> a -> a -> a
+sw q t x | x == q = t
+         | x == t = q
+         | otherwise = x
+
+-- |gateToMatrix takes the number of qubits, a gate data and returns the matrix needed to represent it.
+gateToMatrix :: (Num a, Floating a) => Int -> String -> [QubitId] -> [QubitId] -> Matrix a
+gateToMatrix size name qs cs = moving size sw m where
+    wires = map unqubit $ cs ++ qs
+    mi = foldr min size wires
+    sw = reverse $ generateSwaps wires [mi..]
+    lc = length cs
+    lq = length qs
+    m = between (mi-1) (nameToMatrix lc lq name) (size - (mi + lc + lq - 1))
 
 -- |generateSwaps takes a finite list of source qubits, a list of target qubits,
 -- and returns a list of swaps that moves the qubits into place.
@@ -84,24 +121,6 @@ generateSwaps (q:qs) (t:ts)
     | q == t = generateSwaps qs ts
     | otherwise = (q, t) : generateSwaps (map (sw q t) qs) ts
 generateSwaps _ _ = error "Unbalanced lists passed to generateSwaps"
-
--- |sw q t is a function that swaps q and t
-sw :: Eq a => a -> a -> a -> a
-sw q t x | x == q = t
-         | x == t = q
-         | otherwise = x
-
--- |gateToMatrices takes a single gate and returns the list of matrices needed to represent it.
--- gateToMatrices :: (Num a, Floating a) => Int -> Transformed -> [Matrix a]
--- gateToMatrices size (Gate name cs qs) = [moving size sw m] where
---     mi = foldr min size (cs ++ qs)
---     sw = reverse $ generateSwaps (cs ++ qs) [mi..]
---     lc = length cs
---     lq = length qs
---     m = between (mi-1) (nameToMatrix lc lq name) (size - (mi + lc + lq - 1))
--- gateToMatrices size (Measure q) = [m, m'] where
---     m = between (q-1) (measureMatrix 1) (size - q)
---     m' = between (q-1) (measureMatrix 2) (size - q)
 
 -- |measureMatrix is the matrix for the gate measuring the i-th qubit
 measureMatrix :: (Num a) => Int -> Matrix a

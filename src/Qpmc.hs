@@ -1,7 +1,9 @@
 module Qpmc where
 
+import Data.Function
 import Data.List
 import Data.Matrix
+import Data.Maybe
 
 import SqMath
 import Transitions
@@ -12,8 +14,8 @@ toQpmc ts = "qmc\n"
           ++ concatMap transitionToMatrix (concatMap trDestinations ts)
           ++ "module test\n"
           ++ "  s: [0.." ++ show (foldr (max . snId) 0 named) ++ "] init 0;\n"
-          ++ concatMap (\i -> "  b" ++ show i ++ "bool init false;\n") [0..bs-1]
-          ++ concatMap transitionsToQpmc ts
+          ++ concatMap (\i -> "  b" ++ show i ++ ": bool init false;\n") [0..bs-1]
+          ++ concatMap transitionsToQpmc (sortBy tsort ts)
           ++ concatMap finalToQpmc finals
           ++ "endmodule" where
     bs = foldr (max . length . snBs . trToState) 0 $ concatMap trDestinations ts
@@ -22,13 +24,16 @@ toQpmc ts = "qmc\n"
     finals :: [StateName]
     finals = named \\ map trFromState ts
 
+tsort :: Transitions a -> Transitions a -> Ordering
+tsort = compare `on` trFromState
+
 stateNameToQpmcGuard :: StateName -> String
-stateNameToQpmcGuard (StateName i bs) = "(s = " ++ show i ++ ") " ++ booleans where
+stateNameToQpmcGuard (StateName i bs) = "(s = " ++ show i ++ ")" ++ if null booleans then "" else " " ++ booleans where
     booleans = concatMap (\(b,j) -> "& " ++ (if b then "" else "!") ++ "b" ++ show j) (zip bs [0..])
 
-stateNameToQpmcDestination :: StateName -> String
-stateNameToQpmcDestination (StateName i bs) = "(s = " ++ show i ++ ") " ++ booleans where
-    booleans = concatMap (\(b,j) -> "& " ++ "(b" ++ show j ++ " = " ++ (if b then "true" else "false")) (zip bs [0..])
+stateNameToQpmcDestination :: Int -> StateName -> String
+stateNameToQpmcDestination prefix (StateName i bs) = "(s' = " ++ show i ++ ")" ++ if null booleans then "" else " " ++ booleans where
+    booleans = concatMap (\(b,j) -> "& " ++ "(b" ++ show j ++ "' = " ++ (if b then "true" else "false") ++ ")") (drop prefix $ zip bs [0..])
 
 -- |finalToQpmc returns the QPMC code for a final state
 finalToQpmc :: StateName -> String
@@ -36,15 +41,19 @@ finalToQpmc s = "  [] " ++ stateNameToQpmcGuard s ++ " -> true;\n"
 
 -- |transitionToMatrix returns the QPMC code for a matrix
 transitionToMatrix :: Show a => Transition a -> String
-transitionToMatrix t = "const matrix A" ++ show (trToState t) ++ " = [" ++ inner ++ "];\n" where
-    inner = intercalate ";" $ map sl $ toLists (trMatrix t)
-    sl l = intercalate "," $ map show l
+transitionToMatrix t = fromMaybe "" $ do
+    mat <- trMatrix t
+    let sl l = intercalate "," $ map show l
+    let inner = intercalate ";" $ map sl $ toLists mat
+    let res = "const matrix A" ++ show (trToState t) ++ " = [" ++ inner ++ "];\n"
+    return res
 
 -- |transitionsToQpmc returns the QPMC code for a transition
 transitionsToQpmc :: Transitions a -> String
 transitionsToQpmc (Transitions f ds) = "  [] " ++ stateNameToQpmcGuard f ++ " -> " ++ transitions ++ ";\n" where
-    transitions = intercalate " + " $ map (transitionsToQpmc' . trToState) ds
+    transitions = intercalate " + " $ map (transitionsToQpmc' (length $ snBs f)) ds
 
 -- |transitionsToQpmc' is an helper function used by 'transitionsToQpmc'
-transitionsToQpmc' :: StateName -> String
-transitionsToQpmc' n = "<<A" ++ show n ++ ">> : " ++ stateNameToQpmcDestination n
+transitionsToQpmc' :: Int -> Transition v -> String
+transitionsToQpmc' prefix (Transition Nothing n) = stateNameToQpmcDestination prefix n
+transitionsToQpmc' prefix (Transition (Just _) n) = "<<A" ++ show n ++ ">> : " ++ stateNameToQpmcDestination prefix n

@@ -224,6 +224,6 @@ branchCirc (qa, qb) = do
     m <- measure qb
     bool <- dynamic_lift m
     if bool == 0
-       then hadamard_at qb
-       else qnot_at qb
+       then hadamard_at qa
+       else qnot_at qa
     return $ bool == 0
