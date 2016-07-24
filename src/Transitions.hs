@@ -3,7 +3,10 @@ module Transitions where
 import Data.Matrix
 
 import Quipper
+import Quipper.Circuit
+import Quipper.Monad
 
+import EntangleMonad
 import GatesMatrices
 import MatrixExtra
 import QTuple
@@ -21,18 +24,33 @@ data Transitions v = Transitions {
     trDestinations :: [Transition v]
 }
 
+instance Show v => Show (Transitions v) where
+    show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
+
 data Transition v = Transition {
     trMatrix :: Matrix v,
     trToState :: StateName
 }
 
+instance (Show v) => Show (Transition v) where
+    show (Transition m to) = "[Transition trMatrix=... trToState=" ++ show to ++ "]"
+
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
-circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
-circMatrices circ = error "circMatrices undefined" where -- concat $ evalState result (0, 1)
---     arg = tupleFromList $ map qubit_of_wire [1..]
---     extracted_n = size arg
---     foo = circ arg
+--circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
+circMatrices :: (Num v, Floating v, QTuple a, Show b) => (a -> Circ b) -> [Transitions v]
+circMatrices = treeToTransitions . circToTree where
+
+--circToTree :: QTuple a => (a -> Circ b) -> CircTree b
+circToTree :: Show b => QTuple a => (a -> Circ b) -> CircTree b
+circToTree mcirc = tree where
+    arg = tupleFromList $ map qubit_of_wire [1..]
+    circ = extract_general arity_empty (mcirc arg)
+    argsLength = tupleSize arg
+    tree = buildTree circ argsLength
+
+treeToTransitions :: (Num v, Floating v, Show b) => CircTree b -> [Transitions v]
+treeToTransitions (LeafNode _) = []
 --     result = f gate_list
 --     gate_list = buildTree circ
 --     size = 2 ^ qubit_max

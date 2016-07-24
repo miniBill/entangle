@@ -9,7 +9,7 @@ import Transitions
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
 toQpmc :: [Transitions Expr] -> String
 toQpmc ts = "qmc\n"
-          ++ concatMap transitionToQpmc (concatMap trDestinations ts)
+          ++ concatMap transitionToMatrix (concatMap trDestinations ts)
           ++ "module test\n"
           ++ "  s: [0.." ++ show (foldr (max . snId) 0 named) ++ "] init 0;\n"
           ++ concatMap (\i -> "  b" ++ show i ++ "bool init false;\n") [0..bs-1]
@@ -34,9 +34,9 @@ stateNameToQpmcDestination (StateName i bs) = "(s = " ++ show i ++ ") " ++ boole
 finalToQpmc :: StateName -> String
 finalToQpmc s = "  [] " ++ stateNameToQpmcGuard s ++ " -> true;\n"
 
--- |transitionToQpmc returns the QPMC code for a matrix
-transitionToQpmc :: Show a => Transition a -> String
-transitionToQpmc t = "const matrix A" ++ show (trToState t) ++ " = [" ++ inner ++ "];\n" where
+-- |transitionToMatrix returns the QPMC code for a matrix
+transitionToMatrix :: Show a => Transition a -> String
+transitionToMatrix t = "const matrix A" ++ show (trToState t) ++ " = [" ++ inner ++ "];\n" where
     inner = intercalate ";" $ map sl $ toLists (trMatrix t)
     sl l = intercalate "," $ map show l
 

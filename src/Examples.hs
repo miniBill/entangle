@@ -197,7 +197,7 @@ test_if (q1, q2, q3) = do
 recCirc :: (Qubit, Qubit) -> Circ (Qubit, Qubit)
 recCirc (qa,qb) = do
   qc <- hadamard qa
-  qd <- qnot qa `controlled` qb
+  qd <- qnot qc `controlled` qb
   m1 <- measure qc
   m2 <- measure qd
   bool1 <- dynamic_lift m1
@@ -211,9 +211,9 @@ recCirc (qa,qb) = do
 recCirc' :: (Qubit, Qubit) -> Circ Bool
 recCirc' (qa, qb) = do
   qc <- hadamard qa
-  qd <- qnot qa `controlled` qb
+  qd <- qnot qc `controlled` qb
   m1 <- measure qc
-  m2 <- measure qd
+  --m2 <- measure qd
   bool1 <- dynamic_lift m1
-  bool2 <- dynamic_lift m2
+  --bool2 <- dynamic_lift m2
   return $ bool1 == 0

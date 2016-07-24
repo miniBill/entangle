@@ -12,4 +12,4 @@ executable entangle
     buildable: True
     hs-source-dirs: src
     other-modules:
-    ghc-options: -Wall -fno-warn-type-defaults
+    ghc-options: -Wall -fno-warn-type-defaults -fno-warn-unused-do-bind -fprof-auto -fprof-cafs

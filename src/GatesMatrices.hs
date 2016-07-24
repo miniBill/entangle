@@ -2,12 +2,14 @@ module GatesMatrices (
     nameToGen,
     swapMatrix) where
 
+nameToGen :: Floating a => String -> Int -> Int -> a
 nameToGen "not" = notMatrix
 nameToGen "Z" = zMatrix
 nameToGen "X" = notMatrix
 nameToGen "H" = hadamardMatrix
 nameToGen "W" = wMatrix
 nameToGen "swap" = swapMatrix
+nameToGen n = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
 
 -- |hadamardMatrix is the matrix for the Hadamard gate
 hadamardMatrix :: (Num a, Floating a) => Int -> Int -> a
