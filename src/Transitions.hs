@@ -2,9 +2,7 @@
 
 module Transitions where
 
-import qualified Data.Foldable as DF
 import Data.Matrix
-import qualified Data.Map.Lazy as DM
 
 import Quipper
 import Quipper.Circuit
@@ -49,7 +47,7 @@ data Transition v = Transition {
 }
 
 instance (Show v) => Show (Transition v) where
-    show (Transition m to) = "[Transition trMatrix=... trToState=" ++ show to ++ "]"
+    show (Transition _ to) = "[Transition trMatrix=... trToState=" ++ show to ++ "]"
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
@@ -97,17 +95,17 @@ getWires (GateNode _ qs cs c) = qs ++ cs ++ getWires c
 getWires (MeasureNode q _ l r) = q : getWires l ++ getWires r
 
 -- |sw q t is a function that swaps q and t
-sw :: Eq a => a -> a -> a -> a
+sw :: Eq a => a -> a -> (a -> a)
 sw q t x | x == q = t
          | x == t = q
          | otherwise = x
 
 -- |gateToMatrix takes the number of qubits, a gate data and returns the matrix needed to represent it.
 gateToMatrix :: (Num a, Floating a) => Int -> String -> [QubitId] -> [QubitId] -> Matrix a
-gateToMatrix size name qs cs = moving size sw m where
+gateToMatrix size name qs cs = moving size gsw m where
     wires = map unqubit $ cs ++ qs
     mi = foldr min size wires
-    sw = reverse $ generateSwaps wires [mi..]
+    gsw = reverse $ generateSwaps wires [mi..]
     lc = length cs
     lq = length qs
     m = between (mi-1) (nameToMatrix lc lq name) (size - (mi + lc + lq - 1))

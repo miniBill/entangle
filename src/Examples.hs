@@ -2,6 +2,12 @@ module Examples where
 
 import Quipper
 
+data RecAction = Loop | Exit deriving Show
+
+exitOn :: Bool -> Circ RecAction
+exitOn True = return Exit
+exitOn False = return Loop
+
 myfourthcirc :: Qubit -> Circ Qubit
 myfourthcirc q1 = do
     hadamard q1
@@ -208,17 +214,17 @@ recCirc (qa,qb) = do
     else
       recCirc (qc,qd)
 
-recCirc' :: (Qubit, Qubit) -> Circ Bool
+recCirc' :: (Qubit, Qubit) -> Circ RecAction
 recCirc' (qa, qb) = do
   qc <- hadamard qa
   qd <- qnot qc `controlled` qb
   m1 <- measure qc
-  m2 <- measure qd
+  m2 <- measure qb
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2
-  return $ bool1 == 0
+  exitOn $ bool1 == 0
 
-branchCirc :: (Qubit, Qubit) -> Circ Bool
+branchCirc :: (Qubit, Qubit) -> Circ RecAction
 branchCirc (qa, qb) = do
     hadamard_at qa
     m <- measure qb
@@ -226,4 +232,4 @@ branchCirc (qa, qb) = do
     if bool == 0
        then hadamard_at qa
        else qnot_at qa
-    return $ bool == 0
+    exitOn $ bool == 0

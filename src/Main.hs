@@ -26,9 +26,9 @@ fullOut final c = do
 nonrecursive :: a -> [Transition Expr]
 nonrecursive = const []
 
-recursive :: Bool -> [Transition v]
-recursive False = []
-recursive True = [Transition Nothing $ StateName 0 []]
+recursive :: RecAction -> [Transition v]
+recursive Exit = []
+recursive Loop = [Transition Nothing $ StateName 0 []]
 
 main :: IO ()
 main = fullOut
@@ -38,5 +38,5 @@ main = fullOut
   --nonrecursive strange
   --nonrecursive mycirc
   --nonrecursive test_if
-  --nonrecursive recCirc'
-  recursive branchCirc
+  recursive recCirc'
+  --recursive branchCirc

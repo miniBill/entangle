@@ -1,5 +1,6 @@
 module Qpmc where
 
+import Data.Char
 import Data.Function
 import Data.List
 import Data.Matrix
@@ -22,18 +23,21 @@ toQpmc ts = "qmc\n"
     named :: [StateName]
     named = concatMap (map trToState . trDestinations) ts
     finals :: [StateName]
-    finals = named \\ map trFromState ts
+    finals = filter (\(StateName i _) -> i > 0) $ named \\ map trFromState ts
 
 tsort :: Transitions a -> Transitions a -> Ordering
 tsort = compare `on` trFromState
 
 stateNameToQpmcGuard :: StateName -> String
-stateNameToQpmcGuard (StateName i bs) = "(s = " ++ show i ++ ")" ++ if null booleans then "" else " " ++ booleans where
-    booleans = concatMap (\(b,j) -> "& " ++ (if b then "" else "!") ++ "b" ++ show j) (zip bs [0..])
+stateNameToQpmcGuard (StateName i bs) = "(s = " ++ show i ++ ")" ++ booleans where
+    booleans = concatMap (\(b,j) -> " & " ++ (if b then "" else "!") ++ "b" ++ show j) (zip bs [0..])
 
 stateNameToQpmcDestination :: Int -> StateName -> String
-stateNameToQpmcDestination prefix (StateName i bs) = "(s' = " ++ show i ++ ")" ++ if null booleans then "" else " " ++ booleans where
-    booleans = concatMap (\(b,j) -> "& " ++ "(b" ++ show j ++ "' = " ++ (if b then "true" else "false") ++ ")") (drop prefix $ zip bs [0..])
+stateNameToQpmcDestination prefix (StateName i bs) = "(s' = " ++ show i ++ ")" ++ booleans where
+    booleans = concatMap (\(b,j) -> " & " ++ "(b" ++ show j ++ "' = " ++ showLower b ++ ")") (drop prefix $ zip bs [0..])
+
+showLower :: Show a => a -> String
+showLower = map toLower . show
 
 -- |finalToQpmc returns the QPMC code for a final state
 finalToQpmc :: StateName -> String

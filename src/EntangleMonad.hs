@@ -9,31 +9,32 @@ import Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as DM
 import Data.Maybe
 import Data.Monoid
-import Debug.Trace
+--import Debug.Trace
 
 import Quipper
 import Quipper.Circuit
 import Quipper.Monad
 import Quipper.Transformer
 
+newtype QubitId = QubitId { unqubit :: Int } deriving Eq
+newtype BitId = BitId { unbit :: Int } deriving (Eq, Ord)
+
 type BitState = Map BitId Bool
 
 newtype EntangleMonad a = EntangleMonad {
-    untangle :: BitState -> CircTree (BitState, a)
+    untangle :: BitState -- ^ state of bits before the operation
+             -> [QubitId] -- ^ measured qubits before the operation
+             -> CircTree (BitState, [QubitId], a) -- ^ tree after the operation
 }
 
 instance Monad EntangleMonad where
-    return x = EntangleMonad (\bs -> LeafNode (bs, x))
-    x >>= f = EntangleMonad $ \bs -> do
-        (bs', y) <- untangle x bs
-        untangle (f y) bs'
+    return x = EntangleMonad (\bs ms -> LeafNode (bs, ms, x))
+    x >>= f = EntangleMonad $ \bs ms -> do
+        (bs', ms', y) <- untangle x bs ms
+        untangle (f y) bs' ms'
 
 data CircTree a
-    = GateNode
-        String       -- ^ name 
-        [QubitId]    -- ^ affected qubits
-        [QubitId]    -- ^ controls
-        (CircTree a) -- ^ child
+    = GateNode String [QubitId] [QubitId] (CircTree a) -- ^ name, affected qubits, controls, child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
     | LeafNode a
 
@@ -63,34 +64,37 @@ instance Show a => Show (CircTree a) where
         show' (LeafNode x) = "LeafNode of " ++ show x
 
 showTree :: Int -> (a -> String) -> (a -> [a]) -> a -> String
-showTree i sf cf t = indent i ++ sf t ++ concatMap (\c -> "\n" ++ showTree (i+1) sf cf c) (cf t)
+showTree i sf cf t = indent i ++ sf t ++ concatMap showChild children where
+    children = cf t
+    fork = length children > 1
+    showChild c = "\n" ++ showTree (if fork then i+1 else i) sf cf c
 
 indent :: Int -> String
 indent i = replicate (4*i) ' '
 
 transformGate :: String -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformGate name qs cs = EntangleMonad res where
-    res bs = GateNode name qs cs $ LeafNode (bs, ())
+    res bs ms = GateNode name qs cs $ LeafNode (bs, ms, ())
 
 transformMeasure :: QubitId -> EntangleMonad BitId
+--transformMeasure i | trace ("Measuring " ++ show (unqubit i)) False = undefined
 transformMeasure i = EntangleMonad res where
-    res bs = MeasureNode i new l r where
+    res bs ms = MeasureNode i new l r where
+        ms' = i : ms
+
         lastBit = foldr (max . unbit) 0 $ DM.keys bs
         new = BitId $ 1 + lastBit
 
         bsF = DM.insert new False bs
-        l = LeafNode (bsF, new)
+        l = LeafNode (bsF, ms', new)
 
         bsT = DM.insert new True bs
-        r = LeafNode (bsT, new)
+        r = LeafNode (bsT, ms', new)
 
 transformDynamicLifting :: BitId -> EntangleMonad Bool
 transformDynamicLifting i = EntangleMonad res where
-    res bs = LeafNode (bs, b) where
+    res bs ms = LeafNode (bs, ms, b) where
         b = fromMaybe False $ DM.lookup i bs
-
-newtype QubitId = QubitId { unqubit :: Int }
-newtype BitId = BitId { unbit :: Int } deriving (Eq, Ord)
 
 -- |mytransformer is the main transformer.
 -- it used to extract the needed information from a Quipper circuit.
@@ -111,26 +115,25 @@ assumeQubit (Endpoint_Qubit qi) = qi
 assumeQubit (Endpoint_Bit _) = error "Using bits as controls is not supported yet"
 
 mydtransformer :: DynamicTransformer EntangleMonad QubitId BitId
-mydtransformer = DT mytransformer (error "boxed circuits missing") transformDynamicLifting
+mydtransformer = DT mytransformer (error "Boxed circuits are not supported yet") transformDynamicLifting
 
 instance Show a => Show (ReadWrite a) where
     show (RW_Return a) = "RW_Return " ++ show a
     show (RW_Write gate next) = "RW_Write " ++ show gate ++ "\n" ++ show next
     show (RW_Read wire f) = "RW_Read " ++ show wire ++ "\n" ++ show (f True)
-    show (RW_Subroutine boxId typedSubroutine next) = "RW_Subroutine " ++ show boxId ++ "\n" ++ show next
+    show (RW_Subroutine boxId _ next) = "RW_Subroutine " ++ show boxId ++ "\n" ++ show next
 
 showIndented :: Show a => Int -> a -> String
-showIndented i x = indent ++ replace (show x) where
-    indent = replicate (i*4) ' '
+showIndented i x = indent i ++ replace (show x) where
     replace [] = []
-    replace ('\n':ss) = '\n' : indent ++ replace ss
+    replace ('\n':ss) = '\n' : indent i ++ replace ss
     replace (s:ss) = s : replace ss
 
 -- |buildTree takes a 'Circuit', its arity and returns a tree representing it.
 --buildTree :: DBCircuit x -> Int -> CircTree x
 buildTree :: Show x => DBCircuit x -> Int -> CircTree x
 --buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
-buildTree circuit n = fmap (fst . snd) res where
-    res = untangle monad DM.empty
+buildTree circuit n = fmap (fst . (\(_, _, x) -> x)) res where
+    res = untangle monad DM.empty []
     monad = transform_dbcircuit mydtransformer circuit bindings
     bindings = foldr (\i -> bind_qubit (qubit_of_wire i) (QubitId i)) bindings_empty [1..n]
