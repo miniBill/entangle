@@ -80,11 +80,11 @@ treeToTransitions final t = go (StateName 0 []) t where
         q = unqubit qi
 
         lmat = between (q-1) (measureMatrix 1) (size - q)
-        ls = StateName (i+1) (bs ++ [True])
+        ls = StateName (i+1) (bs ++ [False])
         lt = Transition (Just lmat) ls
 
         rmat = between (q-1) (measureMatrix 2) (size - q)
-        rs = StateName (i+1) (bs ++ [False])
+        rs = StateName (i+1) (bs ++ [True])
         rt = Transition (Just rmat) rs
 
 -- |getWires returns the qubit numbers involved in a gate.

@@ -205,14 +205,14 @@ recCirc (qa,qb) = do
   qc <- hadamard qa
   qd <- qnot qc `controlled` qb
   m1 <- measure qc
-  m2 <- measure qd
+  m2 <- measure qb
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2
-  if bool1 == 0
+  if bool1
     then
-      return (qc,qd)
+      return (qd,qb)
     else
-      recCirc (qc,qd)
+      recCirc (qd,qb)
 
 recCirc' :: (Qubit, Qubit) -> Circ RecAction
 recCirc' (qa, qb) = do
@@ -222,14 +222,14 @@ recCirc' (qa, qb) = do
   m2 <- measure qb
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2
-  exitOn $ bool1 == 0
+  exitOn $ bool1 && bool2
 
 branchCirc :: (Qubit, Qubit) -> Circ RecAction
 branchCirc (qa, qb) = do
     hadamard_at qa
     m <- measure qb
     bool <- dynamic_lift m
-    if bool == 0
+    if bool
        then hadamard_at qa
        else qnot_at qa
-    exitOn $ bool == 0
+    exitOn bool
