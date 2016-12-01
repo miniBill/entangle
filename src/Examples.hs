@@ -223,6 +223,180 @@ recCirc' (qa, qb) = do
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2
   exitOn $ bool1 && bool2
+------------------------------
+
+groverSix :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Bit, Bit, Bit, Bit, Bit, Bit)
+groverSix (q1,q2,q3, q4, q5, q6, q7) = do
+    hadamard_at q1
+    hadamard_at q2
+    hadamard_at q3
+    hadamard_at q4
+    hadamard_at q5
+    hadamard_at q6
+    hadamard_at q7
+    --startOracle
+    qnot_at q7 `controlled` [q1, q2, q3, q4, q5, q6]
+    --endOracle
+
+    --startRotation
+    hadamard_at q1
+    hadamard_at q2
+    hadamard_at q3
+    hadamard_at q4
+    hadamard_at q5
+    hadamard_at q6
+    gate_X_at q1
+    gate_X_at q2
+    gate_X_at q3
+    gate_X_at q4
+    gate_X_at q5
+    gate_X_at q6
+    hadamard_at q6
+    qnot_at q6 `controlled` [q1, q2, q3, q4, q5]
+    hadamard_at q6
+    gate_X_at q1
+    gate_X_at q2
+    gate_X_at q3
+    gate_X_at q4
+    gate_X_at q5
+    gate_X_at q6
+    hadamard_at q1
+    hadamard_at q2
+    hadamard_at q3
+    hadamard_at q4
+    hadamard_at q5
+    hadamard_at q6
+    --endRotation
+
+    hadamard_at q7
+    measure (q1,q2,q3,q4,q5,q6)
+
+---------------------------------
+
+groverRec :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ RecAction
+groverRec (q1,q2,q3, q4, q5, q6, q7) = do
+    qa <- hadamard q1
+    qb <- hadamard q2
+    qc <- hadamard q3
+    qd <- hadamard q4
+    qe <- hadamard q5
+    qf <- hadamard q6
+    qg <- hadamard q7
+    --startOracle
+    qnot_at qg `controlled` [qa, qb, qc, qd, qe, qf]
+    --endOracle
+
+    --startRotation
+    hadamard_at qa
+    hadamard_at qb
+    hadamard_at qc
+    hadamard_at qd
+    hadamard_at qe
+    hadamard_at qf
+    gate_X_at qa
+    gate_X_at qb
+    gate_X_at qc
+    gate_X_at qd
+    gate_X_at qe
+    gate_X_at qf
+    hadamard_at qf
+    qnot_at qf `controlled` [qa, qb, qc, qd, qe]
+    hadamard_at qf
+    gate_X_at qa
+    gate_X_at qb
+    gate_X_at qc
+    gate_X_at qd
+    gate_X_at qe
+    gate_X_at qf
+    hadamard_at qa
+    hadamard_at qb
+    hadamard_at qc
+    hadamard_at qd
+    hadamard_at qe
+    hadamard_at qf
+    --endRotation
+
+    hadamard_at qg
+    m1 <- measure qa
+    m2 <- measure qb
+    m3 <- measure qc
+    m4 <- measure qd
+    m5 <- measure qe
+    m6 <- measure qf
+    m7 <- measure qg
+
+    bool1 <- dynamic_lift m1
+    bool2 <- dynamic_lift m2
+    bool3 <- dynamic_lift m3
+    bool4 <- dynamic_lift m4
+    bool5 <- dynamic_lift m5
+    bool6 <- dynamic_lift m6
+    bool7 <- dynamic_lift m7
+
+    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) 
+    --   then return (qa,qb,qc,qd,qe,qf,qg)
+    --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
+    exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) && (not bool7)
+
+
+groverRecFive :: (Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ RecAction
+groverRecFive (q1,q2,q3, q4, q5) = do
+    qa <- hadamard q1
+    qb <- hadamard q2
+    qc <- hadamard q3
+    qd <- hadamard q4
+    qe <- hadamard q5
+
+    --startOracle
+    qnot_at qe `controlled` [qa, qb, qc, qd]
+    --endOracle
+
+    --startRotation
+    hadamard_at qa
+    hadamard_at qb
+    hadamard_at qc
+    hadamard_at qd
+
+    gate_X_at qa
+    gate_X_at qb
+    gate_X_at qc
+    gate_X_at qd
+
+    hadamard_at qd
+    qnot_at qe `controlled` [qa, qb, qc, qd]
+    hadamard_at qd
+
+    gate_X_at qa
+    gate_X_at qb
+    gate_X_at qc
+    gate_X_at qd
+
+    hadamard_at qa
+    hadamard_at qb
+    hadamard_at qc
+    hadamard_at qd
+
+    hadamard_at qe
+
+    m1 <- measure qa
+    m2 <- measure qb
+    m3 <- measure qc
+    m4 <- measure qd
+    m5 <- measure qe
+
+    bool1 <- dynamic_lift m1
+    bool2 <- dynamic_lift m2
+    bool3 <- dynamic_lift m3
+    bool4 <- dynamic_lift m4
+    bool5 <- dynamic_lift m5
+
+    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) 
+    --   then return (qa,qb,qc,qd,qe,qf,qg)
+    --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
+    exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5)
+
+
+----------------------------
 
 branchCirc :: (Qubit, Qubit) -> Circ RecAction
 branchCirc (qa, qb) = do
@@ -233,3 +407,32 @@ branchCirc (qa, qb) = do
        then hadamard_at qa
        else qnot_at qa
     exitOn bool
+
+{- branchCircBoth :: (Qubit, Qubit) -> Circ (Qubit, Qubit, Bool)
+branchCircBoth (qa, qb) = do
+    hadamard_at qa
+    m <- measure qb
+    bool <- dynamic_lift m
+    if bool
+       then hadamard_at qa
+       else qnot_at qa
+    return (qa, qb, bool)
+
+branchCircQuipper (qa, qb) = do
+  (qa, qb, _) <- branchCircBoth
+  return (qa, qb)
+
+branchCircQpmc (qa, qb) = do
+  (_, _, bool) <- branchCircBoth
+  exitOn bool-}
+
+interfCirc :: (Qubit, Qubit) -> Circ RecAction
+interfCirc (qa, qb) = do
+  hadamard_at qa
+  qnot_at qb `controlled` qa
+  ma <- measure qa
+  mb <- measure qb
+  boola <- dynamic_lift ma
+  boolb <- dynamic_lift mb
+  exitOn $ boola == boolb
+
