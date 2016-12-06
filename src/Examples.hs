@@ -1,12 +1,37 @@
 module Examples where
 
 import Quipper
+import QuipperLib.QFT
+import QuipperLib.Arith
 
 data RecAction = Loop | Exit deriving Show
 
 exitOn :: Bool -> Circ RecAction
 exitOn True = return Exit
 exitOn False = return Loop
+
+----------------------------------------------------------------------
+
+qft_internal :: [Qubit] -> Circ [Qubit]
+qft_internal [] = return []
+qft_internal [x] = do 
+  hadamard x
+  return [x]
+qft_internal (x:xs) = do 
+  xs' <- qft_internal xs
+  xs'' <- rotations x xs' (length xs')
+  x' <- hadamard x
+  return (x':xs'')
+  where
+    -- Auxiliary function used by 'qft'.
+    rotations :: Qubit -> [Qubit] -> Int -> Circ [Qubit]
+    rotations _ [] _ = return []
+    rotations c (q:qs) n = do 
+      qs' <- rotations c qs n
+      q' <- rGate ((n + 1) - length qs) q `controlled` c
+      return (q':qs')
+
+----------------------------------------------------------------------
 
 myfourthcirc :: Qubit -> Circ Qubit
 myfourthcirc q1 = do
@@ -117,6 +142,28 @@ groverNaive (q1,q2,q3) = do
     hadamard_at q2
     hadamard_at q3
     measure (q1,q2)
+
+groverNaive2 :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
+groverNaive2 (q1,q2,q3) = do
+    qa <- hadamard q1
+    qb <- hadamard q2
+    qc <- hadamard q3
+    --gate_X_at q2
+    qd <- qnot qc `controlled` [qa, qb]
+    --gate_X_at q2
+    qe <- hadamard qa
+    qf <- hadamard qb
+    qg <- gate_X qe
+    qh <- gate_X qf
+    qj <- hadamard qh
+    qk <- qnot qj `controlled` qg
+    ql <- hadamard qk
+    qm <- gate_X qg
+    qn <- gate_X ql
+    qo <- hadamard qm
+    qp <- hadamard qn
+    qq <- hadamard qd
+    measure (qo,qp)
 
 
 testMatrix_6 :: (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ (Qubit, Qubit, Qubit, Qubit, Qubit, Qubit)
@@ -429,7 +476,8 @@ branchCircQpmc (qa, qb) = do
 interfCirc :: (Qubit, Qubit) -> Circ RecAction
 interfCirc (qa, qb) = do
   hadamard_at qa
-  qnot_at qb `controlled` qa
+  rGate_at 2 qb `controlled` qa
+  qft_internal [qa,qb]
   ma <- measure qa
   mb <- measure qb
   boola <- dynamic_lift ma
