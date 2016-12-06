@@ -1,8 +1,10 @@
 module GatesMatrices (
     nameToGen,
-    swapMatrix) where
+    swapMatrix,
+    nameToGenR) where
 
 type MatrixGen a = Int -> Int -> a
+type MatrixGenR a = Int -> Int -> Int -> a
 
 -- |nameToGen takes a gate name and returns its matrix, as a function
 nameToGen :: Floating a => String -> MatrixGen a
@@ -13,6 +15,15 @@ nameToGen "H" = hadamardMatrix
 nameToGen "W" = wMatrix
 nameToGen "swap" = swapMatrix
 nameToGen n = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
+
+nameToGenR :: Floating a => String -> MatrixGenR a
+nameToGenR "rGate" = rotationMatrix
+nameToGenR n = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
+
+-- |rotationMatrix is the matrix for the rGate. NOTE: This version is temporary.
+rotationMatrix :: (Num a, Floating a) => MatrixGenR a
+rotationMatrix 1 1 _ = 1
+rotationMatrix 2 2 n = exp((2*pi*sqrt(-1))/2^n)
 
 -- |hadamardMatrix is the matrix for the Hadamard gate
 hadamardMatrix :: (Num a, Floating a) => MatrixGen a

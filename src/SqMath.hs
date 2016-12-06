@@ -66,6 +66,7 @@ instance Floating Expr where
     acosh = undefined
     atanh = undefined
 
+
 simplify :: Expr -> Expr
 simplify (Leaf a :+: Leaf b) = Leaf $ a + b
 simplify (Leaf 0 :+: a) = simplify a
@@ -104,6 +105,7 @@ perfectSqrt i | i < 0 = Nothing
 perfectSqrt a | b * b == a = Just b where
     b = floor $ sqrt $ fromInteger a
 perfectSqrt _ = Nothing
+
 
 -- showF :: Expr -> String
 -- showF = showF' 0

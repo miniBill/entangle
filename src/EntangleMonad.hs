@@ -106,6 +106,12 @@ mytransformer (T_QGate name _ _ _ _ f) = f g where
     g wires g_controls controls = do
         transformGate name wires (map (assumeQubit . open) controls)
         return (wires, g_controls, controls)
+mytransformer (T_QRot name _ _ _ _ _ f) = f g where
+    open (Signed _ False) = error "Negative controls are not supported yet"
+    open (Signed x True) = x
+    g wires g_controls controls = do
+        transformGate name wires (map (assumeQubit . open) controls)
+        return (wires, g_controls, controls)
 mytransformer (T_QMeas f) = f transformMeasure
 mytransformer (T_DTerm _ f) = f (const $ return ())
 mytransformer g = error $ "Gate \"" ++ show g ++ "\" is not supported yet"
