@@ -381,8 +381,7 @@ groverRec (q1,q2,q3, q4, q5, q6, q7) = do
     --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6)
     --   then return (qa,qb,qc,qd,qe,qf,qg)
     --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
-    exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) && (not bool7)
-
+    exitOn $ bool1 && not bool2 && not bool3 && not bool4 && not bool5 && not bool6 && not bool7
 
 groverRecFive :: (Qubit, Qubit, Qubit, Qubit, Qubit) -> Circ RecAction
 groverRecFive (q1,q2,q3, q4, q5) = do
@@ -438,7 +437,7 @@ groverRecFive (q1,q2,q3, q4, q5) = do
     --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6)
     --   then return (qa,qb,qc,qd,qe,qf,qg)
     --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
-    exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5)
+    exitOn $ bool1 && not bool2 && not bool3 && not bool4 && not bool5
 
 
 ----------------------------
@@ -481,4 +480,3 @@ interfCirc (qa, qb) = do
   boola <- dynamic_lift ma
   boolb <- dynamic_lift mb
   exitOn $ boola == boolb
-

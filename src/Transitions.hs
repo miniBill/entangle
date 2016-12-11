@@ -55,8 +55,8 @@ instance (Show v) => Show (Transition v) where
 circMatrices :: (Num v, Floating v, QTuple a, Show b) => (b -> [Transition v]) -> (a -> Circ b) -> [Transitions v]
 circMatrices final = treeToTransitions final . circToTree
 
---circToTree :: (Show b, QTuple a) => (a -> Circ b) -> CircTree b
-circToTree :: QTuple a => (a -> Circ b) -> CircTree b
+--circToTree :: QTuple a => (a -> Circ b) -> CircTree b
+circToTree :: (Show b, QTuple a) => (a -> Circ b) -> CircTree b
 circToTree mcirc = tree where
     arg = tupleFromList $ map qubit_of_wire [1..]
     circ = extract_general arity_empty (mcirc arg)
