@@ -1,22 +1,22 @@
 module Examples where
 
-import Quipper
+import           Quipper
 
 data RecAction = Loop | Exit deriving Show
 
 exitOn :: Bool -> Circ RecAction
-exitOn True = return Exit
+exitOn True  = return Exit
 exitOn False = return Loop
 
 ----------------------------------------------------------------------
 
-qft_internal :: [Qubit] -> Circ [Qubit]
-qft_internal [] = return []
-qft_internal [x] = do 
+qftInternal :: [Qubit] -> Circ [Qubit]
+qftInternal [] = return []
+qftInternal [x] = do
   hadamard x
   return [x]
-qft_internal (x:xs) = do 
-  xs' <- qft_internal xs
+qftInternal (x:xs) = do
+  xs' <- qftInternal xs
   xs'' <- rotations x xs' (length xs')
   x' <- hadamard x
   return (x':xs'')
@@ -24,7 +24,7 @@ qft_internal (x:xs) = do
     -- Auxiliary function used by 'qft'.
     rotations :: Qubit -> [Qubit] -> Int -> Circ [Qubit]
     rotations _ [] _ = return []
-    rotations c (q:qs) n = do 
+    rotations c (q:qs) n = do
       qs' <- rotations c qs n
       q' <- rGate ((n + 1) - length qs) q `controlled` c
       return (q':qs')
@@ -378,7 +378,7 @@ groverRec (q1,q2,q3, q4, q5, q6, q7) = do
     bool6 <- dynamic_lift m6
     bool7 <- dynamic_lift m7
 
-    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) 
+    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6)
     --   then return (qa,qb,qc,qd,qe,qf,qg)
     --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
     exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) && (not bool7)
@@ -435,7 +435,7 @@ groverRecFive (q1,q2,q3, q4, q5) = do
     bool4 <- dynamic_lift m4
     bool5 <- dynamic_lift m5
 
-    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6) 
+    --if bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5) && (not bool6)
     --   then return (qa,qb,qc,qd,qe,qf,qg)
     --   else groverRec (qa,qb,qc,qd,qe,qf,qg)
     exitOn $ bool1 && (not bool2) && (not bool3) && (not bool4) && (not bool5)
@@ -475,7 +475,7 @@ interfCirc :: (Qubit, Qubit) -> Circ RecAction
 interfCirc (qa, qb) = do
   hadamard_at qa
   rGate_at 2 qb `controlled` qa
-  qft_internal [qa,qb]
+  qftInternal [qa,qb]
   ma <- measure qa
   mb <- measure qb
   boola <- dynamic_lift ma
