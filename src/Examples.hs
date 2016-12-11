@@ -1,8 +1,6 @@
 module Examples where
 
 import Quipper
-import QuipperLib.QFT
-import QuipperLib.Arith
 
 data RecAction = Loop | Exit deriving Show
 
