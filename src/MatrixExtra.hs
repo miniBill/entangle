@@ -2,7 +2,7 @@ module MatrixExtra (
     kronecker
     ) where
 
-import Data.Matrix
+import           Data.Matrix
 
 -- |kronecker is the Kronecker product
 kronecker :: Num a => Matrix a -> Matrix a -> Matrix a

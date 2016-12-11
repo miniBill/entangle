@@ -2,13 +2,13 @@
 
 module Main where
 
-import Quipper
+import           Quipper
 
-import Examples
-import QTuple
-import Qpmc
-import SqMath
-import Transitions
+import           Examples
+import           Qpmc
+import           QTuple
+import           SqMath
+import           Transitions
 
 -- |fullOut takes a function returning a value in the 'Circ' monad,
 -- and outputs the result of transforming it to QPMC code

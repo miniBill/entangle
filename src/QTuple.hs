@@ -1,7 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module QTuple where
 
-import Quipper
+import           Quipper
 
 -- |The 'Tuple' class creates a tuple out of a list.
 class QTuple a where

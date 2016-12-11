@@ -2,16 +2,16 @@
 
 module Transitions where
 
-import Data.Matrix
+import           Data.Matrix
 
-import Quipper
-import Quipper.Circuit
-import Quipper.Monad
+import           Quipper
+import           Quipper.Circuit
+import           Quipper.Monad
 
-import EntangleMonad
-import GatesMatrices
-import MatrixExtra
-import QTuple
+import           EntangleMonad
+import           GatesMatrices
+import           MatrixExtra
+import           QTuple
 
 data StateName = StateName {
     snId :: Integer,  -- ^ state id
@@ -23,18 +23,18 @@ instance Ord StateName where
         | snId a < snId b = LT
         | snId a > snId b = GT
         | otherwise = compare' (snBs a) (snBs b) where
-            compare' [] [] = EQ
-            compare' [] _ = LT
-            compare' _ [] = GT
+            compare' [] []              = EQ
+            compare' [] _               = LT
+            compare' _ []               = GT
             compare' (True:_) (False:_) = LT
             compare' (False:_) (True:_) = GT
-            compare' (_:as) (_:bs) = compare' as bs
+            compare' (_:as) (_:bs)      = compare' as bs
 
 instance Show StateName where
     show (StateName i bs) = show i ++ if null bs then "" else "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
 
 data Transitions v = Transitions {
-    trFromState :: StateName,
+    trFromState    :: StateName,
     trDestinations :: [Transition v]
 }
 
@@ -42,7 +42,7 @@ instance Show v => Show (Transitions v) where
     show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
 
 data Transition v = Transition {
-    trMatrix :: Maybe (Matrix v),
+    trMatrix  :: Maybe (Matrix v),
     trToState :: StateName
 }
 
@@ -53,10 +53,10 @@ instance (Show v) => Show (Transition v) where
 -- and calculates the list of QPMC transitions needed to represent it.
 --circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
 circMatrices :: (Num v, Floating v, QTuple a, Show b) => (b -> [Transition v]) -> (a -> Circ b) -> [Transitions v]
-circMatrices final = treeToTransitions final . circToTree where
+circMatrices final = treeToTransitions final . circToTree
 
---circToTree :: QTuple a => (a -> Circ b) -> CircTree b
-circToTree :: Show b => QTuple a => (a -> Circ b) -> CircTree b
+--circToTree :: (Show b, QTuple a) => (a -> Circ b) -> CircTree b
+circToTree :: QTuple a => (a -> Circ b) -> CircTree b
 circToTree mcirc = tree where
     arg = tupleFromList $ map qubit_of_wire [1..]
     circ = extract_general arity_empty (mcirc arg)
@@ -70,13 +70,13 @@ treeToTransitions final t = go (StateName 0 []) t where
     qubit_max :: Int
     qubit_max = foldr (max . unqubit) 0 wires
     size = 2 ^ qubit_max
-    go sn (LeafNode x) = if null f then [] else [Transitions sn $ f] where
+    go sn (LeafNode x) = if null f then [] else [Transitions sn f] where
         f = final x
-    go sn@(StateName i bs) (GateNode name qs cts c) = [Transitions sn [tr]] ++ go state' c where
+    go sn@(StateName i bs) (GateNode name qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
         mat = gateToMatrix size name qs cts
         state' = StateName (i+1) bs
-    go sn@(StateName i bs) (MeasureNode qi b l r) = [Transitions sn [lt, rt]] ++ go ls l ++ go rs r where
+    go sn@(StateName i bs) (MeasureNode qi b l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
         q = unqubit qi
 
         lmat = between (q-1) (measureMatrix 1) (size - q)
@@ -90,8 +90,8 @@ treeToTransitions final t = go (StateName 0 []) t where
 -- |getWires returns the qubit numbers involved in a gate.
 --getWires :: CircTree a -> [Int]
 getWires :: Show a => CircTree a -> [QubitId]
-getWires (LeafNode _) = []
-getWires (GateNode _ qs cs c) = qs ++ cs ++ getWires c
+getWires (LeafNode _)          = []
+getWires (GateNode _ qs cs c)  = qs ++ cs ++ getWires c
 getWires (MeasureNode q _ l r) = q : getWires l ++ getWires r
 
 -- |sw q t is a function that swaps q and t
@@ -124,7 +124,7 @@ generateSwaps _ _ = error "Unbalanced lists passed to generateSwaps"
 measureMatrix :: (Num a) => Int -> Matrix a
 measureMatrix i = matrix 2 2 gen where
   gen (x, y) | x == i && y == i = 1
-  gen _ = 0
+  gen _      = 0
 
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
@@ -171,4 +171,3 @@ between :: Num a => Int -> Matrix a -> Int -> Matrix a
 between b m a = before `kronecker` m `kronecker` after where
     before = identity $ 2 ^ b
     after  = identity $ 2 ^ a
-

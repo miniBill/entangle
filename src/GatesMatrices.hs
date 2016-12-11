@@ -8,17 +8,17 @@ type MatrixGenR a = Int -> Int -> Int -> a
 
 -- |nameToGen takes a gate name and returns its matrix, as a function
 nameToGen :: Floating a => String -> MatrixGen a
-nameToGen "not" = notMatrix
-nameToGen "Z" = zMatrix
-nameToGen "X" = notMatrix
-nameToGen "H" = hadamardMatrix
-nameToGen "W" = wMatrix
+nameToGen "not"  = notMatrix
+nameToGen "Z"    = zMatrix
+nameToGen "X"    = notMatrix
+nameToGen "H"    = hadamardMatrix
+nameToGen "W"    = wMatrix
 nameToGen "swap" = swapMatrix
-nameToGen n = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
+nameToGen n      = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
 
 nameToGenR :: Floating a => String -> MatrixGenR a
 nameToGenR "rGate" = rotationMatrix
-nameToGenR n = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
+nameToGenR n       = error $ "Gate \"" ++ show n ++ "\" is not supported yet"
 
 -- |rotationMatrix is the matrix for the rGate. NOTE: This version is temporary.
 rotationMatrix :: (Num a, Floating a) => MatrixGenR a

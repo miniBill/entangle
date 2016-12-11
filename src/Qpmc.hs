@@ -1,13 +1,13 @@
 module Qpmc where
 
-import Data.Char
-import Data.Function
-import Data.List
-import Data.Matrix
-import Data.Maybe
+import           Data.Char
+import           Data.Function
+import           Data.List
+import           Data.Matrix
+import           Data.Maybe
 
-import SqMath
-import Transitions
+import           SqMath
+import           Transitions
 
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
 toQpmc :: [Transitions Expr] -> String
