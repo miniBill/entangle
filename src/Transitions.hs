@@ -1,8 +1,7 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Transitions where
-
-import           Data.Matrix
 
 import           Quipper
 import           Quipper.Circuit
@@ -33,26 +32,26 @@ instance Ord StateName where
 instance Show StateName where
     show (StateName i bs) = show i ++ if null bs then "" else "_" ++ map (\b -> if b then 'T' else 'F') (reverse bs)
 
-data Transitions v = Transitions {
+data Transitions m v = Transitions {
     trFromState    :: StateName,
-    trDestinations :: [Transition v]
+    trDestinations :: [Transition m v]
 }
 
-instance Show v => Show (Transitions v) where
+instance Show v => Show (Transitions m v) where
     show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
 
-data Transition v = Transition {
-    trMatrix  :: Maybe (Matrix v),
+data Transition m v = Transition {
+    trMatrix  :: Maybe (m v),
     trToState :: StateName
 }
 
-instance (Show v) => Show (Transition v) where
+instance (Show v) => Show (Transition m v) where
     show (Transition _ to) = "[Transition trMatrix=... trToState=" ++ show to ++ "]"
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
 --circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
-circMatrices :: (Num v, Floating v, QTuple a, Show b) => (b -> [Transition v]) -> (a -> Circ b) -> [Transitions v]
+circMatrices :: (Num v, Floating v, QTuple a, Show b, GMatrix m v) => (b -> [Transition m v]) -> (a -> Circ b) -> [Transitions m v]
 circMatrices final = treeToTransitions final . circToTree
 
 --circToTree :: QTuple a => (a -> Circ b) -> CircTree b
@@ -63,7 +62,7 @@ circToTree mcirc = tree where
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (Num v, Floating v, Show b) => (b -> [Transition v]) -> CircTree b -> [Transitions v]
+treeToTransitions :: (Num v, Floating v, Show b, GMatrix m v) => (b -> [Transition m v]) -> CircTree b -> [Transitions m v]
 treeToTransitions final t = go (StateName 0 []) t where
     wires :: [QubitId]
     wires = getWires t
@@ -101,7 +100,7 @@ sw q t x | x == q = t
          | otherwise = x
 
 -- |gateToMatrix takes the number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrix :: (Num a, Floating a) => Int -> String -> [QubitId] -> [QubitId] -> Matrix a
+gateToMatrix :: (Num a, Floating a, GMatrix m a) => Int -> String -> [QubitId] -> [QubitId] -> m a
 gateToMatrix size name qs cs = moving size gsw m where
     wires = map unqubit $ cs ++ qs
     mi = foldr min size wires
@@ -121,7 +120,7 @@ generateSwaps (q:qs) (t:ts)
 generateSwaps _ _ = error "Unbalanced lists passed to generateSwaps"
 
 -- |measureMatrix is the matrix for the gate measuring the i-th qubit
-measureMatrix :: (Num a) => Int -> Matrix a
+measureMatrix :: (Num a, GMatrix m a) => Int -> m a
 measureMatrix i = matrix 2 2 gen where
   gen (x, y) | x == i && y == i = 1
   gen _      = 0
@@ -129,7 +128,7 @@ measureMatrix i = matrix 2 2 gen where
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
-nameToMatrix :: (Num a, Floating a) => Int -> Int -> String -> Matrix a
+nameToMatrix :: (Num a, Floating a, GMatrix m a) => Int -> Int -> String -> m a
 nameToMatrix c q n = matrix total_size total_size gen where
     total_size = 2 ^ (c+q)
     small_size = if q == 0 then 0 else 2 ^ q
@@ -147,27 +146,28 @@ nameToMatrix c q n = matrix total_size total_size gen where
 --   * moving the chosen qubits
 --   * applying the given matrix
 --   * moving the qubits back to their original position
-moving :: Num a => Int -> [(Int, Int)] -> Matrix a -> Matrix a
+moving :: (Num a, GMatrix m a) => Int -> [(Int, Int)] -> m a -> m a
 moving size moves m = back * m * forth where
     forth = move size moves
     back  = move size $ reverse moves
 
 -- |move is the matrix that moves the chosen qubits
-move :: Num a => Int -> [(Int, Int)] -> Matrix a
+move :: (Num a, GMatrix m a) => Int -> [(Int, Int)] -> m a
 move size = foldr f (identity (2 ^ size)) where
     f (t1, t2) m = swapToMatrix size t1 t2 * m
 
 -- |swapToMatrix is the matrix swapping the chosen qubits
-swapToMatrix :: Num a => Int -> Int -> Int -> Matrix a
-swapToMatrix size n m | n > m = swapToMatrix size m n
-                        | n == m = identity (2 ^ size)
-                        | n < m - 1 = swapToMatrix size n (m - 1) * swapToMatrix size (m - 1) m
-                        -- otherwise: n == m - 1
-                        | otherwise = between (n - 1) (matrix 4 4 $ uncurry swapMatrix) (size - m)
+swapToMatrix :: (Num a, GMatrix m a) => Int -> Int -> Int -> m a
+swapToMatrix size n m
+    | n > m = swapToMatrix size m n
+    | n == m = identity (2 ^ size)
+    | n < m - 1 = swapToMatrix size n (m - 1) * swapToMatrix size (m - 1) m
+    -- otherwise: n == m - 1
+    | otherwise = between (n - 1) (matrix 4 4 $ uncurry swapMatrix) (size - m)
 
 -- |between takes a matrix and applies it to the chosen qubits,
 -- without modifying the other ones
-between :: Num a => Int -> Matrix a -> Int -> Matrix a
+between :: GMatrix m a => Int -> m a -> Int -> m a
 between b m a = before `kronecker` m `kronecker` after where
     before = identity $ 2 ^ b
     after  = identity $ 2 ^ a

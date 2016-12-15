@@ -1,16 +1,19 @@
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Qpmc where
 
 import           Data.Char
 import           Data.Function
 import           Data.List
-import           Data.Matrix
 import           Data.Maybe
 
+import           MatrixExtra
 import           SqMath
 import           Transitions
 
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
-toQpmc :: [Transitions Expr] -> String
+toQpmc :: GMatrix m Expr => [Transitions m Expr] -> String
 toQpmc ts = "qmc\n"
           ++ concatMap transitionToMatrix (concatMap trDestinations ts)
           ++ "module test\n"
@@ -25,7 +28,7 @@ toQpmc ts = "qmc\n"
     finals :: [StateName]
     finals = filter (\(StateName i _) -> i > 0) $ named \\ map trFromState ts
 
-tsort :: Transitions a -> Transitions a -> Ordering
+tsort :: Transitions m a -> Transitions m a -> Ordering
 tsort = compare `on` trFromState
 
 stateNameToQpmcGuard :: StateName -> String
@@ -44,20 +47,19 @@ finalToQpmc :: StateName -> String
 finalToQpmc s = "  [] " ++ stateNameToQpmcGuard s ++ " -> true;\n"
 
 -- |transitionToMatrix returns the QPMC code for a matrix
-transitionToMatrix :: Show a => Transition a -> String
+transitionToMatrix :: (GMatrix m a, Show a) => Transition m a -> String
 transitionToMatrix t = fromMaybe "" $ do
     mat <- trMatrix t
-    let sl l = intercalate "," $ map show l
-    let inner = intercalate ";" $ map sl $ toLists mat
-    let res = "const matrix A" ++ show (trToState t) ++ " = [" ++ inner ++ "];\n"
+    let inner = matrixToQpmc mat
+    let res = "const matrix A" ++ show (trToState t) ++ " = " ++ inner ++ ";\n"
     return res
 
 -- |transitionsToQpmc returns the QPMC code for a transition
-transitionsToQpmc :: Transitions a -> String
+transitionsToQpmc :: Transitions m a -> String
 transitionsToQpmc (Transitions f ds) = "  [] " ++ stateNameToQpmcGuard f ++ " -> " ++ transitions ++ ";\n" where
     transitions = intercalate " + " $ map (transitionsToQpmc' (length $ snBs f)) ds
 
 -- |transitionsToQpmc' is an helper function used by 'transitionsToQpmc'
-transitionsToQpmc' :: Int -> Transition v -> String
+transitionsToQpmc' :: Int -> Transition m a -> String
 transitionsToQpmc' prefix (Transition Nothing n) = stateNameToQpmcDestination prefix n
 transitionsToQpmc' prefix (Transition (Just _) n) = "<<A" ++ show n ++ ">> : " ++ stateNameToQpmcDestination prefix n
