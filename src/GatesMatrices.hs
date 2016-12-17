@@ -3,8 +3,8 @@ module GatesMatrices (
     swapMatrix,
     nameToGenR) where
 
-type MatrixGen a = Int -> Int -> a
-type MatrixGenR a = Int -> Int -> Int -> a
+type MatrixGen a = Integer -> Integer -> a
+type MatrixGenR a = Integer -> Integer -> Integer -> a
 
 -- |nameToGen takes a gate name and returns its matrix, as a function
 nameToGen :: Floating a => String -> MatrixGen a

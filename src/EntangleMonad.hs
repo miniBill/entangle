@@ -15,8 +15,38 @@ import           Quipper.Circuit
 import           Quipper.Monad
 import           Quipper.Transformer
 
-newtype QubitId = QubitId { unqubit :: Int } deriving Eq
-newtype BitId = BitId { unbit :: Int } deriving (Eq, Ord)
+newtype QubitId = QubitId Int deriving (Eq, Ord)
+newtype BitId = BitId Int deriving (Eq, Ord)
+
+liftEnum :: (Enum a) => (Int -> Int -> Int) -> a -> a -> a
+liftEnum op a b = toEnum $ op (fromEnum a) (fromEnum b)
+
+instance Show QubitId where
+    show (QubitId i) = "qubit " ++ show i
+
+instance Bounded QubitId where
+    minBound = QubitId 0
+    maxBound = QubitId maxBound
+
+instance Enum QubitId where
+    fromEnum (QubitId i) = i
+    toEnum = QubitId
+
+instance Num QubitId where
+    (+) = liftEnum (+)
+    (-) = liftEnum (-)
+    fromInteger = toEnum . fromIntegral
+
+instance Show BitId where
+    show (BitId i) = "bit " ++ show i
+
+instance Bounded BitId where
+    minBound = BitId 0
+    maxBound = BitId maxBound
+
+instance Enum BitId where
+    fromEnum (BitId i) = i
+    toEnum = BitId
 
 type BitState = Map BitId Bool
 
@@ -67,10 +97,10 @@ instance Show a => Show (CircTree a) where
         child (GateNode _ _ _ c)    = [c]
         child (MeasureNode _ _ l r) = [l, r]
         child (LeafNode _)          = []
-        show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on qubits " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
-            qubits   = intercalate ", " $ map (show . unqubit) qs
-            controls = intercalate ", " $ map (show . unqubit) cs
-        show' (MeasureNode q b _ _) = "MeasureNode on qubit " ++ show (unqubit q) ++ " producing bit " ++ show (unbit b)
+        show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
+            qubits   = intercalate ", " $ map show qs
+            controls = intercalate ", " $ map show cs
+        show' (MeasureNode q b _ _) = "MeasureNode on " ++ show q ++ " producing " ++ show b
         show' (LeafNode x) = "LeafNode of " ++ show x
 
 showTree :: Int -> (a -> String) -> (a -> [a]) -> a -> String
@@ -87,13 +117,13 @@ transformGate name qs cs = EntangleMonad res where
     res bs ms = GateNode name qs cs $ LeafNode (bs, ms, ())
 
 transformMeasure :: QubitId -> EntangleMonad BitId
---transformMeasure i | trace ("Measuring " ++ show (unqubit i)) False = undefined
+--transformMeasure i | trace ("Measuring " ++ show (unQubitID i)) False = undefined
 transformMeasure i = EntangleMonad res where
     res bs ms = MeasureNode i new l r where
         ms' = i : ms
 
-        lastBit = foldr (max . unbit) 0 $ DM.keys bs
-        new = BitId $ 1 + lastBit
+        lastBit = foldr max minBound $ DM.keys bs
+        new = succ lastBit
 
         bsF = DM.insert new False bs
         l = LeafNode (bsF, ms', new)
