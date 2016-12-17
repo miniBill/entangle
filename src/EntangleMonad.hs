@@ -15,38 +15,7 @@ import           Quipper.Circuit
 import           Quipper.Monad
 import           Quipper.Transformer
 
-newtype QubitId = QubitId Int deriving (Eq, Ord)
-newtype BitId = BitId Int deriving (Eq, Ord)
-
-liftEnum :: (Enum a) => (Int -> Int -> Int) -> a -> a -> a
-liftEnum op a b = toEnum $ op (fromEnum a) (fromEnum b)
-
-instance Show QubitId where
-    show (QubitId i) = "qubit " ++ show i
-
-instance Bounded QubitId where
-    minBound = QubitId 0
-    maxBound = QubitId maxBound
-
-instance Enum QubitId where
-    fromEnum (QubitId i) = i
-    toEnum = QubitId
-
-instance Num QubitId where
-    (+) = liftEnum (+)
-    (-) = liftEnum (-)
-    fromInteger = toEnum . fromIntegral
-
-instance Show BitId where
-    show (BitId i) = "bit " ++ show i
-
-instance Bounded BitId where
-    minBound = BitId 0
-    maxBound = BitId maxBound
-
-instance Enum BitId where
-    fromEnum (BitId i) = i
-    toEnum = BitId
+import           BitQubitId
 
 type BitState = Map BitId Bool
 
@@ -182,4 +151,4 @@ buildTree :: Show x => DBCircuit x -> Int -> CircTree x
 buildTree circuit n = fmap (fst . (\(_, _, x) -> x)) res where
     res = untangle monad DM.empty []
     monad = transform_dbcircuit mydtransformer circuit bindings
-    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) (QubitId i)) bindings_empty [1..n]
+    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) (qubitId i)) bindings_empty [1..n]

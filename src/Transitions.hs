@@ -7,6 +7,7 @@ import           Quipper
 import           Quipper.Circuit
 import           Quipper.Monad
 
+import           BitQubitId
 import           EntangleMonad
 import           GatesMatrices
 import           MatrixExtra
@@ -105,8 +106,8 @@ gateToMatrix size name qs cs = moving size gsw m where
     wires = cs ++ qs
     mi = foldr min size wires
     gsw = reverse $ generateSwaps wires [mi..]
-    lc = QubitId $ length cs
-    lq = QubitId $ length qs
+    lc = qubitId $ length cs
+    lq = qubitId $ length qs
     m = between (pred mi) (nameToMatrix lc lq name) (pred $ size - (mi + lc + lq))
 
 -- |generateSwaps takes a finite list of source qubits, a list of target qubits,
@@ -131,9 +132,6 @@ measureMatrix k =
         gen _ _ _  = 0
     in
         matrix 2 2 (gen k)
-
-toSize :: QubitId -> Integer
-toSize i = 2 ^ fromEnum i
 
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
