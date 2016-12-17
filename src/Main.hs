@@ -43,6 +43,9 @@ numeric = error "proxy"
 
 main :: IO ()
 main = fullOut
+  symbolic
+  --numeric
+
   --nonrecursive grover_naive
   --nonrecursive test_matrix_3
   --nonrecursive test_matrix_3
@@ -51,4 +54,4 @@ main = fullOut
   --nonrecursive test_if
   --recursive recCirc'
   --recursive branchCirc
-  numeric recursive groverRec
+  recursive groverRec
