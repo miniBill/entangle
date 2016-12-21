@@ -9,7 +9,7 @@ import           Quipper.Monad
 
 import           BitQubitId
 import           EntangleMonad
-import           GatesMatrices
+import qualified GatesMatrices
 import           MatrixExtra
 import           QTuple
 
@@ -149,7 +149,7 @@ nameToMatrix controlCount qubitCount name =
         total_size = toSize (controlCount + qubitCount)
         small_size = if qubitCount == 0 then 0 else toSize qubitCount
         big_size = total_size - small_size
-        active = matrix small_size small_size (nameToGen name)
+        active = GatesMatrices.nameToMatrix name
     in
         if big_size == 0
             then active
@@ -180,7 +180,7 @@ swapToMatrix size n m
     | n == m = identity $ toSize size
     | n < pred m  = swapToMatrix size n (pred m) * swapToMatrix size (pred m) m
     -- otherwise: n == pred m
-    | otherwise = between (pred n) (matrix 4 4 swapMatrix) (size - m)
+    | otherwise = between (pred n) MatrixExtra.swap (size - m)
 
 -- |between takes a matrix and applies it to the chosen qubits,
 -- without modifying the other ones

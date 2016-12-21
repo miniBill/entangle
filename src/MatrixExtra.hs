@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    kronecker, identity, matrix, zero, matrixToQpmc,
+    kronecker, identity, matrix, zero, matrixToQpmc, hadamard, pauliX, pauliZ, swap,
     (<->), (<|>),
     GMatrix,
 
@@ -14,8 +14,16 @@ import           Data.List
 import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
 import qualified Data.Matrix
 
-data SymbolicMatrix a
+data StandardMatrix
     = Identity Integer
+    | Hadamard
+    | PauliX
+    | PauliZ
+    | ControlNot
+    | Swap
+
+data SymbolicMatrix a
+    = StandardMatrix StandardMatrix
     | Zero Integer Integer
     | Matrix Integer Integer (Integer -> Integer -> a)
     | Multiply (SymbolicMatrix a) (SymbolicMatrix a)
@@ -23,11 +31,19 @@ data SymbolicMatrix a
     | HorizontalJoin (SymbolicMatrix a) (SymbolicMatrix a)
     | VerticalJoin (SymbolicMatrix a) (SymbolicMatrix a)
 
+instance Show StandardMatrix where
+    show (Identity i) = "ID(" ++ show i ++ ")"
+    show Hadamard = "HD"
+    show PauliX = "PX"
+    show PauliZ = "PZ"
+    show ControlNot = "CN"
+    show Swap = "SW"
+
 instance Show (SymbolicMatrix a) where
-    show (Identity i)    = "Identity " ++ show i
+    show (StandardMatrix m) = show m
     show (Zero r c) = "Zero " ++ show r ++ " " ++ show c
-    show (Kronecker a b) = "Kronecker (" ++ show a ++ ") (" ++ show b ++ ")"
     show (Matrix r c _)  = "Matrix " ++ show r ++ " " ++ show c
+    show (Kronecker a b) = "Kronecker (" ++ show a ++ ") (" ++ show b ++ ")"
     show (Multiply a b)  = "Multiply (" ++ show a ++ ") (" ++ show b ++ ")"
     show (HorizontalJoin l r) = "HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
     show (VerticalJoin u d) = "VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
@@ -42,15 +58,27 @@ class Num (m a) => GMatrix m a where
     (<->) :: m a -> m a -> m a
     (<|>) :: m a -> m a -> m a
 
+    -- |hadamard is the matrix for the Hadamard gate
+    hadamard :: Floating a => m a
+
+    -- |pauliX is the Pauli X matrix (Not)
+    pauliX :: m a
+
+    -- |pauliZ is the Pauli Z matrix
+    pauliZ :: m a
+
+    -- |swap is a matrix that swaps two qubits
+    swap :: m a
+
 instance Num (SymbolicMatrix a) where
     (*) = Multiply
 
 instance GMatrix SymbolicMatrix a where
-    kronecker a (Identity 1) = a
-    kronecker (Identity 1) b = b
+    kronecker a (StandardMatrix (Identity 1)) = a
+    kronecker (StandardMatrix (Identity 1)) b = b
     kronecker a b            = Kronecker a b
 
-    identity = Identity
+    identity = StandardMatrix . Identity
 
     zero = Zero
 
@@ -58,6 +86,11 @@ instance GMatrix SymbolicMatrix a where
     matrixToQpmc = show
     (<->) = VerticalJoin
     (<|>) = HorizontalJoin
+
+    hadamard = StandardMatrix Hadamard
+    pauliX = StandardMatrix PauliX
+    pauliZ = StandardMatrix PauliZ
+    swap = StandardMatrix Swap
 
 downcast :: Integer -> Int
 downcast x
@@ -97,3 +130,24 @@ instance (Num a, Show a) => GMatrix Matrix a where
     (<->) = (Data.Matrix.<->)
 
     (<|>) = (Data.Matrix.<|>)
+
+    hadamard = matrix 2 2 hadamardMatrix where
+        hadamardMatrix 2 2 = -1 / sqrt 2
+        hadamardMatrix _ _ = 1 / sqrt 2
+
+    pauliX = matrix 2 2 pauliXMatrix where
+        pauliXMatrix 1 2 = 1
+        pauliXMatrix 2 1 = 1
+        pauliXMatrix _ _ = 0
+
+    pauliZ = matrix 2 2 pauliZMatrix where
+        pauliZMatrix 1 1 = 1
+        pauliZMatrix 2 2 = -1
+        pauliZMatrix _ _ = 0
+
+    swap = matrix 4 4 swapMatrix where
+        swapMatrix 1 1 = 1
+        swapMatrix 2 3 = 1
+        swapMatrix 3 2 = 1
+        swapMatrix 4 4 = 1
+        swapMatrix _ _ = 0
