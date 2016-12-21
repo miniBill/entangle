@@ -54,4 +54,5 @@ main = fullOut
   --nonrecursive test_if
   --recursive recCirc'
   --recursive branchCirc
+  --recursive interfCirc
   recursive groverRec

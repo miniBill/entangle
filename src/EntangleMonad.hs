@@ -40,6 +40,7 @@ instance Monad EntangleMonad where
 
 data CircTree a
     = GateNode String [QubitId] [QubitId] (CircTree a) -- ^ name, affected qubits, controls, child
+    | ParameterizedGateNode String Double [QubitId] [QubitId] (CircTree a) -- ^ name, parameter, affected qubits, controls, child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
     | LeafNode a
 
@@ -53,20 +54,26 @@ instance Applicative CircTree where
 instance Monad CircTree where
     return = LeafNode
     (GateNode n qs cs t) >>= f = GateNode n qs cs (t >>= f)
+    (ParameterizedGateNode n p qs cs t) >>= f = ParameterizedGateNode n p qs cs (t >>= f)
     (MeasureNode q b l r) >>= f = MeasureNode q b (l >>= f) (r >>= f)
     (LeafNode x) >>= f = f x
 
 instance Foldable CircTree where
     foldMap f (GateNode _ _ _ t)    = foldMap f t
+    foldMap f (ParameterizedGateNode _ _ _ _ t) = foldMap f t
     foldMap f (MeasureNode _ _ l r) = foldMap f l <> foldMap f r
     foldMap f (LeafNode x)          = f x
 
 instance Show a => Show (CircTree a) where
     show = showTree 0 show' child where
         child (GateNode _ _ _ c)    = [c]
+        child (ParameterizedGateNode _ _ _ _ c) = [c]
         child (MeasureNode _ _ l r) = [l, r]
         child (LeafNode _)          = []
         show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
+            qubits   = intercalate ", " $ map show qs
+            controls = intercalate ", " $ map show cs
+        show' (ParameterizedGateNode n t qs cs _) = "ParameterizedGateNode \"" ++ n ++ "\" with parameter " ++ show t ++ " on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
             qubits   = intercalate ", " $ map show qs
             controls = intercalate ", " $ map show cs
         show' (MeasureNode q b _ _) = "MeasureNode on " ++ show q ++ " producing " ++ show b
@@ -84,6 +91,10 @@ indent i = replicate (4*i) ' '
 transformGate :: String -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformGate name qs cs = EntangleMonad res where
     res bs ms = GateNode name qs cs $ LeafNode (bs, ms, ())
+
+transformParameterizedGate :: String -> Double -> [QubitId] -> [QubitId] -> EntangleMonad ()
+transformParameterizedGate name t qs cs = EntangleMonad res where
+    res bs ms = ParameterizedGateNode name t qs cs $ LeafNode (bs, ms, ())
 
 transformMeasure :: QubitId -> EntangleMonad BitId
 --transformMeasure i | trace ("Measuring " ++ show (unQubitID i)) False = undefined
@@ -115,11 +126,11 @@ mytransformer (T_QGate name _ _ _ _ f) = f g where
     g wires g_controls controls = do
         transformGate name wires (map (assumeQubit . open) controls)
         return (wires, g_controls, controls)
-mytransformer (T_QRot name _ _ _ _ _ f) = f g where
+mytransformer (T_QRot name _ _ _ t _ f) = f g where
     open (Signed _ False) = error "Negative controls are not supported yet"
     open (Signed x True)  = x
     g wires g_controls controls = do
-        transformGate name wires (map (assumeQubit . open) controls)
+        transformParameterizedGate name t wires (map (assumeQubit . open) controls)
         return (wires, g_controls, controls)
 mytransformer (T_QMeas f) = f transformMeasure
 mytransformer (T_DTerm _ f) = f (const $ return ())

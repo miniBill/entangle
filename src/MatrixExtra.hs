@@ -1,9 +1,11 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    kronecker, identity, matrix, zero, matrixToQpmc, hadamard, pauliX, pauliZ, swap, swapSqrt,
+    kronecker, identity, matrix, zero, matrixToQpmc, hadamard,
+    pauliX, pauliZ, swap, swapSqrt, phaseShift,
     (<->), (<|>),
     GMatrix, GCMatrix,
 
@@ -16,16 +18,17 @@ import qualified Data.Matrix
 
 import           Complex
 
-data StandardMatrix
+data StandardMatrix a
     = Identity Integer
     | Hadamard
     | PauliX
     | PauliZ
     | ControlNot
     | Swap
+    | PhaseShift a
 
 data SymbolicMatrix a
-    = StandardMatrix StandardMatrix
+    = StandardMatrix (StandardMatrix a)
     | Zero Integer Integer
     | Matrix Integer Integer (Integer -> Integer -> a)
     | Multiply (SymbolicMatrix a) (SymbolicMatrix a)
@@ -33,15 +36,16 @@ data SymbolicMatrix a
     | HorizontalJoin (SymbolicMatrix a) (SymbolicMatrix a)
     | VerticalJoin (SymbolicMatrix a) (SymbolicMatrix a)
 
-instance Show StandardMatrix where
+instance Show a => Show (StandardMatrix a) where
     show (Identity i) = "ID(" ++ show i ++ ")"
     show Hadamard = "HD"
     show PauliX = "PX"
     show PauliZ = "PZ"
     show ControlNot = "CN"
     show Swap = "SW"
+    show (PhaseShift d) = "PS(" ++ show d ++ ")"
 
-instance Show (SymbolicMatrix a) where
+instance Show a => Show (SymbolicMatrix a) where
     show (StandardMatrix m) = show m
     show (Zero r c) = "Zero " ++ show r ++ " " ++ show c
     show (Matrix r c _)  = "Matrix " ++ show r ++ " " ++ show c
@@ -89,11 +93,10 @@ class (Num a, Num (m a)) => GMatrix m a where
         swapMatrix 4 4 = 1
         swapMatrix _ _ = 0
 
-class GMatrix m (Complex a) => GCMatrix m a where
+class (Fractional a, Floating a, GMatrix m (Complex a)) => GCMatrix m a where
     -- |swapSqrt is the gate_W, the square root of the swap matrix
-    swapSqrt :: Fractional a => m (Complex a)
+    swapSqrt :: m (Complex a)
     swapSqrt = matrix 4 4 swapSqrtMatrix where
-        swapSqrtMatrix :: Fractional a => Integer -> Integer -> Complex a
         swapSqrtMatrix 1 1 = 1
         swapSqrtMatrix 2 2 = (1 + ii) / 2
         swapSqrtMatrix 2 3 = (1 - ii) / 2
@@ -102,10 +105,16 @@ class GMatrix m (Complex a) => GCMatrix m a where
         swapSqrtMatrix 4 4 = 1
         swapSqrtMatrix _ _ = 0
 
+    phaseShift :: a -> m (Complex a)
+    phaseShift phi = matrix 2 2 phaseShiftMatrix where
+        phaseShiftMatrix 1 1 = 1
+        phaseShiftMatrix 2 2 = exp $ ii * (phi :+ 0)
+        phaseShiftMatrix _ _ = 0
+
 instance Num (SymbolicMatrix a) where
     (*) = Multiply
 
-instance Num a => GMatrix SymbolicMatrix a where
+instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     kronecker a (StandardMatrix (Identity 1)) = a
     kronecker (StandardMatrix (Identity 1)) b = b
     kronecker a b            = Kronecker a b
@@ -124,7 +133,8 @@ instance Num a => GMatrix SymbolicMatrix a where
     pauliZ = StandardMatrix PauliZ
     swap = StandardMatrix Swap
 
-instance Num a => GCMatrix SymbolicMatrix a
+instance (Floating a, Fractional a, Show a) => GCMatrix SymbolicMatrix a where
+    phaseShift t = StandardMatrix $ PhaseShift $ t :+ 0
 
 downcast :: Integer -> Int
 downcast x

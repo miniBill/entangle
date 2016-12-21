@@ -1,20 +1,29 @@
 {-# LANGUAGE PatternGuards #-}
 
-module SqMath (Expr) where
+module SqMath (Expr, FromDouble(..)) where
 
 import           Data.Ratio
 
 data Expr
-    = Leaf Integer
+    = ILeaf Integer
+    | DLeaf Double
     | Expr :+: Expr
     | Expr :*: Expr
     | Expr :/: Expr
     | Abs Expr
     | Sqrt Expr
+    | Exp Expr
+    | Pi
 
 infixl 6 :+:
 infixl 7 :*:
 infixl 7 :/:
+
+class FromDouble a where
+    fromDouble :: Double -> a
+
+instance FromDouble Expr where
+    fromDouble = DLeaf
 
 -- eval :: Expr -> Either Integer Double
 -- eval (Leaf i) = Left i
@@ -43,17 +52,17 @@ instance Num Expr where
     a * b = simplify $ a :*: b
     abs a = simplify $ Abs a
     signum = undefined
-    fromInteger = Leaf
-    negate a = a * Leaf (-1)
+    fromInteger = ILeaf
+    negate a = a * ILeaf (-1)
 
 instance Fractional Expr where
-    fromRational r = Leaf (numerator r) / Leaf (numerator r)
+    fromRational r = ILeaf (numerator r) / ILeaf (numerator r)
     a / b = simplify $ a :/: b
 
 instance Floating Expr where
     sqrt a = simplify $ Sqrt a
-    pi = undefined
-    exp = undefined
+    exp a = simplify $ Exp a
+    pi = Pi
     log = undefined
     sin = undefined
     cos = undefined
@@ -68,35 +77,35 @@ instance Floating Expr where
 
 
 simplify :: Expr -> Expr
-simplify (Leaf a :+: Leaf b)         = Leaf $ a + b
-simplify (Leaf 0 :+: a)              = simplify a
-simplify (a :+: Leaf 0)              = simplify a
+simplify (ILeaf a :+: ILeaf b)         = ILeaf $ a + b
+simplify (ILeaf 0 :+: a)              = simplify a
+simplify (a :+: ILeaf 0)              = simplify a
 simplify ((a :/: b) :+: c)           = (a + b * c) / b
 simplify (a :+: (b :/: c))           = (a * c + b) / c
 
-simplify (Leaf 0 :*: _)              = 0
-simplify (_ :*: Leaf 0)              = 0
-simplify (Leaf 1 :*: a)              = simplify a
-simplify (a :*: Leaf 1)              = simplify a
-simplify (Leaf a :*: Leaf b)         = Leaf $ a * b
+simplify (ILeaf 0 :*: _)              = 0
+simplify (_ :*: ILeaf 0)              = 0
+simplify (ILeaf 1 :*: a)              = simplify a
+simplify (a :*: ILeaf 1)              = simplify a
+simplify (ILeaf a :*: ILeaf b)         = ILeaf $ a * b
 simplify ((a :/: b) :*: c)           = (a * c) / b
 simplify (a :*: (b :/: c))           = (a * b) / c
 simplify (Sqrt a :*: Sqrt b)         = sqrt $ a * b
 simplify ((a :*: b) :*: c)           = a * (b * c)
-simplify (a :*: Leaf b)              = Leaf b * a
-simplify (Leaf a :*: (Leaf b :*: c)) = Leaf (a * b) * c
-simplify (a :*: (b@(Leaf _) :*: c))  = b * (a * c)
+simplify (a :*: ILeaf b)              = ILeaf b * a
+simplify (ILeaf a :*: (ILeaf b :*: c)) = ILeaf (a * b) * c
+simplify (a :*: (b@(ILeaf _) :*: c))  = b * (a * c)
 
 simplify (a :/: s@(Sqrt _))          = (a * s) / (s * s)
 simplify ((a :/: b) :/: c)           = a / (b * c)
 simplify (a :/: (b :/: c))           = (a * c) / b
-simplify (Leaf a :/: Leaf b)         | a `mod` b == 0 = Leaf $ a `div` b
-simplify ((Leaf a :*: b) :/: Leaf c) | a `mod` c == 0 = (Leaf $ a `div` c) * b
+simplify (ILeaf a :/: ILeaf b)         | a `mod` b == 0 = ILeaf $ a `div` b
+simplify ((ILeaf a :*: b) :/: ILeaf c) | a `mod` c == 0 = (ILeaf $ a `div` c) * b
 
-simplify (Sqrt (Leaf a))             | Just r <- perfectSqrt a = Leaf r
+simplify (Sqrt (ILeaf a))             | Just r <- perfectSqrt a = ILeaf r
 simplify (Sqrt (x :/: y))            = sqrt x / sqrt y
 
-simplify (Abs (Leaf a))              = Leaf $ abs a
+simplify (Abs (ILeaf a))              = ILeaf $ abs a
 
 simplify e                           = e
 
@@ -122,9 +131,12 @@ perfectSqrt _ = Nothing
 --     showF'' (Sqrt a)  = "sqrt\n" ++ showF' (i+1) a
 
 instance Show Expr where
-    show (Leaf i)  = show i
+    show (ILeaf i) = show i
+    show (DLeaf d) = show d
     show (x :+: y) = "(" ++ show x ++ " + " ++ show y ++ ")"
     show (x :*: y) = "(" ++ show x ++ " * " ++ show y ++ ")"
     show (x :/: y) = "(" ++ show x ++ " / " ++ show y ++ ")"
     show (Abs a)   = "abs(" ++ show a ++ ")"
     show (Sqrt a)  = "sqrt(" ++ show a ++ ")"
+    show (Exp a)   = "exp(" ++ show a ++ ")"
+    show Pi = "pi"

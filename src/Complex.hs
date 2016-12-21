@@ -33,3 +33,6 @@ instance Floating a => Floating (Complex a) where
             aabs (a :+ b) = sqrt (a * a + b * b)
         in
             (sqrt r :+ 0) * (z + rc) / (aabs (z + rc) :+ 0)
+
+instance Show a => Show (Complex a) where
+    show (a :+ b) = show a ++ ":+" ++ show b
