@@ -149,10 +149,14 @@ nameToMatrix controlCount qubitCount name =
         total_size = toSize (controlCount + qubitCount)
         small_size = if qubitCount == 0 then 0 else toSize qubitCount
         big_size = total_size - small_size
+        active = matrix small_size small_size (nameToGen name)
     in
-          (identity big_size        <|> zero big_size small_size)
-                                    <->
-          (zero small_size big_size <|> matrix small_size small_size (nameToGen name))
+        if big_size == 0
+            then active
+            else
+                (identity big_size        <|> zero big_size small_size)
+                                          <->
+                (zero small_size big_size <|> active)
 
 
 -- |moving returns a matrix representing:
