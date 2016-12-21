@@ -38,7 +38,7 @@ data Transitions m v = Transitions {
     trDestinations :: [Transition m v]
 }
 
-instance Show v => Show (Transitions m v) where
+instance Show (Transitions m v) where
     show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
 
 data Transition m v = Transition {
@@ -46,7 +46,7 @@ data Transition m v = Transition {
     trToState :: StateName
 }
 
-instance (Show v) => Show (Transition m v) where
+instance Show (Transition m v) where
     show (Transition _ to) = "[Transition trMatrix=... trToState=" ++ show to ++ "]"
 
 type QubitCount = QubitId
@@ -55,7 +55,7 @@ type ControlCount = QubitId
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
 --circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
-circMatrices :: (Num v, Floating v, QTuple a, Show b, GMatrix m v) => (b -> [Transition m v]) -> (a -> Circ b) -> [Transitions m v]
+circMatrices :: (Floating v, QTuple a, Show b, GMatrix m v) => (b -> [Transition m v]) -> (a -> Circ b) -> [Transitions m v]
 circMatrices final = treeToTransitions final . circToTree
 
 --circToTree :: QTuple a => (a -> Circ b) -> CircTree b
@@ -66,7 +66,7 @@ circToTree mcirc = tree where
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (Num v, Floating v, Show b, GMatrix m v) => (b -> [Transition m v]) -> CircTree b -> [Transitions m v]
+treeToTransitions :: (Floating v, Show b, GMatrix m v) => (b -> [Transition m v]) -> CircTree b -> [Transitions m v]
 treeToTransitions final t = go (StateName 0 []) t where
     wires :: [QubitId]
     wires = getWires t
@@ -100,25 +100,32 @@ sw q t x | x == q = t
          | x == t = q
          | otherwise = x
 
--- |gateToMatrix takes the number of qubits, a gate data and returns the matrix needed to represent it.
+-- |gateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
 gateToMatrix :: (Num a, Floating a, GMatrix m a) => QubitCount -> String -> [QubitId] -> [QubitId] -> m a
-gateToMatrix size name qs cs = moving size gsw m where
-    wires = cs ++ qs
-    mi = foldr min size wires
-    gsw = reverse $ generateSwaps wires [mi..]
-    lc = qubitId $ length cs
-    lq = qubitId $ length qs
-    m = between (pred mi) (nameToMatrix lc lq name) (pred $ size - (mi + lc + lq))
+gateToMatrix size name qs cs =
+    let
+        wires = cs ++ qs
+        mi = minimum wires
+        swaps = reverse $ generateSwaps wires [mi..]
+        controlCount = qubitId $ length cs
+        qubitCount = qubitId $ length qs
+        ma = pred $ mi + controlCount + qubitCount
+        l = pred mi
+        m = nameToMatrix controlCount qubitCount name
+        r = size - ma
+        mat = between l m r
+    in
+        moving size swaps mat
 
 -- |generateSwaps takes a finite list of source qubits, a list of target qubits,
 -- and returns a list of swaps that moves the qubits into place.
 -- Algebrically this is a decomposition of a generic permutation into swaps.
 generateSwaps :: Eq t => [t] -> [t] -> [(t, t)]
 generateSwaps [] _ = []
+generateSwaps _ [] = []
 generateSwaps (q:qs) (t:ts)
     | q == t = generateSwaps qs ts
     | otherwise = (q, t) : generateSwaps (map (sw q t) qs) ts
-generateSwaps _ _ = error "Unbalanced lists passed to generateSwaps"
 
 data MeasureKind = UL | BR
 
