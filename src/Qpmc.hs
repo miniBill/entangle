@@ -13,7 +13,7 @@ import           SqMath
 import           Transitions
 
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code
-toQpmc :: GMatrix m Expr => [Transitions m Expr] -> String
+toQpmc :: GCMatrix m Expr => [Transitions m Expr] -> String
 toQpmc ts = "qmc\n"
           ++ concatMap transitionToMatrix (concatMap trDestinations ts)
           ++ "module test\n"
@@ -47,7 +47,7 @@ finalToQpmc :: StateName -> String
 finalToQpmc s = "  [] " ++ stateNameToQpmcGuard s ++ " -> true;\n"
 
 -- |transitionToMatrix returns the QPMC code for a matrix
-transitionToMatrix :: (GMatrix m a, Show a) => Transition m a -> String
+transitionToMatrix :: (GCMatrix m a, Show a) => Transition m a -> String
 transitionToMatrix t = fromMaybe "" $ do
     mat <- trMatrix t
     let inner = matrixToQpmc mat

@@ -3,9 +3,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    kronecker, identity, matrix, zero, matrixToQpmc, hadamard, pauliX, pauliZ, swap,
+    kronecker, identity, matrix, zero, matrixToQpmc, hadamard, pauliX, pauliZ, swap, swapSqrt,
     (<->), (<|>),
-    GMatrix,
+    GMatrix, GCMatrix,
 
     SymbolicMatrix
     ) where
@@ -13,6 +13,8 @@ module MatrixExtra (
 import           Data.List
 import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
 import qualified Data.Matrix
+
+import           Complex
 
 data StandardMatrix
     = Identity Integer
@@ -48,7 +50,7 @@ instance Show (SymbolicMatrix a) where
     show (HorizontalJoin l r) = "HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
     show (VerticalJoin u d) = "VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
 
-class Num (m a) => GMatrix m a where
+class (Num a, Num (m a)) => GMatrix m a where
     -- |kronecker is the Kronecker product
     kronecker :: m a -> m a -> m a
     identity :: Integer -> m a
@@ -60,20 +62,50 @@ class Num (m a) => GMatrix m a where
 
     -- |hadamard is the matrix for the Hadamard gate
     hadamard :: Floating a => m a
+    hadamard = matrix 2 2 hadamardMatrix where
+        hadamardMatrix 2 2 = -1 / sqrt 2
+        hadamardMatrix _ _ = 1 / sqrt 2
 
     -- |pauliX is the Pauli X matrix (Not)
     pauliX :: m a
+    pauliX = matrix 2 2 pauliXMatrix where
+        pauliXMatrix 1 2 = 1
+        pauliXMatrix 2 1 = 1
+        pauliXMatrix _ _ = 0
 
     -- |pauliZ is the Pauli Z matrix
     pauliZ :: m a
+    pauliZ = matrix 2 2 pauliZMatrix where
+        pauliZMatrix 1 1 = 1
+        pauliZMatrix 2 2 = -1
+        pauliZMatrix _ _ = 0
 
     -- |swap is a matrix that swaps two qubits
     swap :: m a
+    swap = matrix 4 4 swapMatrix where
+        swapMatrix 1 1 = 1
+        swapMatrix 2 3 = 1
+        swapMatrix 3 2 = 1
+        swapMatrix 4 4 = 1
+        swapMatrix _ _ = 0
+
+class GMatrix m (Complex a) => GCMatrix m a where
+    -- |swapSqrt is the gate_W, the square root of the swap matrix
+    swapSqrt :: Fractional a => m (Complex a)
+    swapSqrt = matrix 4 4 swapSqrtMatrix where
+        swapSqrtMatrix :: Fractional a => Integer -> Integer -> Complex a
+        swapSqrtMatrix 1 1 = 1
+        swapSqrtMatrix 2 2 = (1 + ii) / 2
+        swapSqrtMatrix 2 3 = (1 - ii) / 2
+        swapSqrtMatrix 3 2 = (1 - ii) / 2
+        swapSqrtMatrix 3 3 = (1 + ii) / 2
+        swapSqrtMatrix 4 4 = 1
+        swapSqrtMatrix _ _ = 0
 
 instance Num (SymbolicMatrix a) where
     (*) = Multiply
 
-instance GMatrix SymbolicMatrix a where
+instance Num a => GMatrix SymbolicMatrix a where
     kronecker a (StandardMatrix (Identity 1)) = a
     kronecker (StandardMatrix (Identity 1)) b = b
     kronecker a b            = Kronecker a b
@@ -91,6 +123,8 @@ instance GMatrix SymbolicMatrix a where
     pauliX = StandardMatrix PauliX
     pauliZ = StandardMatrix PauliZ
     swap = StandardMatrix Swap
+
+instance Num a => GCMatrix SymbolicMatrix a
 
 downcast :: Integer -> Int
 downcast x
@@ -130,24 +164,3 @@ instance (Num a, Show a) => GMatrix Matrix a where
     (<->) = (Data.Matrix.<->)
 
     (<|>) = (Data.Matrix.<|>)
-
-    hadamard = matrix 2 2 hadamardMatrix where
-        hadamardMatrix 2 2 = -1 / sqrt 2
-        hadamardMatrix _ _ = 1 / sqrt 2
-
-    pauliX = matrix 2 2 pauliXMatrix where
-        pauliXMatrix 1 2 = 1
-        pauliXMatrix 2 1 = 1
-        pauliXMatrix _ _ = 0
-
-    pauliZ = matrix 2 2 pauliZMatrix where
-        pauliZMatrix 1 1 = 1
-        pauliZMatrix 2 2 = -1
-        pauliZMatrix _ _ = 0
-
-    swap = matrix 4 4 swapMatrix where
-        swapMatrix 1 1 = 1
-        swapMatrix 2 3 = 1
-        swapMatrix 3 2 = 1
-        swapMatrix 4 4 = 1
-        swapMatrix _ _ = 0

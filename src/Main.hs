@@ -18,7 +18,7 @@ import           Transitions
 -- |fullOut takes a function returning a value in the 'Circ' monad,
 -- and outputs the result of transforming it to QPMC code
 --fullOut :: QTuple a => (a -> Circ b) -> IO ()
-fullOut :: (QTuple a, Show b, GMatrix m Expr) => m x -> (b -> [Transition m Expr]) -> (a -> Circ b) -> IO ()
+fullOut :: (QTuple a, Show b, GCMatrix m Expr) => m x -> (b -> [Transition m Expr]) -> (a -> Circ b) -> IO ()
 fullOut _ final c = do
     putStr "---\n"
     let tree = circToTree c

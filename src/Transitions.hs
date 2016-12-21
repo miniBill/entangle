@@ -3,6 +3,8 @@
 
 module Transitions where
 
+import           Complex
+
 import           Quipper
 import           Quipper.Circuit
 import           Quipper.Monad
@@ -42,7 +44,7 @@ instance Show (Transitions m v) where
     show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
 
 data Transition m v = Transition {
-    trMatrix  :: Maybe (m v),
+    trMatrix  :: Maybe (m (Complex v)),
     trToState :: StateName
 }
 
@@ -54,8 +56,8 @@ type ControlCount = QubitId
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
---circMatrices :: (Num v, Floating v, QTuple a) => (a -> Circ b) -> [Transitions v]
-circMatrices :: (Floating v, QTuple a, Show b, GMatrix m v) => (b -> [Transition m v]) -> (a -> Circ b) -> [Transitions m v]
+--circMatrices :: (Floating a, QTuple q) => (q -> Circ b) -> [Transitions a]
+circMatrices :: (Floating a, QTuple q, Show b, GCMatrix m a) => (b -> [Transition m a]) -> (q -> Circ b) -> [Transitions m a]
 circMatrices final = treeToTransitions final . circToTree
 
 --circToTree :: QTuple a => (a -> Circ b) -> CircTree b
@@ -66,7 +68,7 @@ circToTree mcirc = tree where
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (Floating v, Show b, GMatrix m v) => (b -> [Transition m v]) -> CircTree b -> [Transitions m v]
+treeToTransitions :: (Fractional a, Floating a, Show b, GCMatrix m a) => (b -> [Transition m a]) -> CircTree b -> [Transitions m a]
 treeToTransitions final t = go (StateName 0 []) t where
     wires :: [QubitId]
     wires = getWires t
@@ -101,7 +103,7 @@ sw q t x | x == q = t
          | otherwise = x
 
 -- |gateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrix :: (Num a, Floating a, GMatrix m a) => QubitCount -> String -> [QubitId] -> [QubitId] -> m a
+gateToMatrix :: (Fractional a, Floating a, GCMatrix m a) => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
 gateToMatrix size name qs cs =
     let
         wires = cs ++ qs
@@ -143,7 +145,7 @@ measureMatrix k =
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
-nameToMatrix :: (Num a, Floating a, GMatrix m a) => ControlCount -> QubitCount -> String -> m a
+nameToMatrix :: (Fractional a, Floating a, GCMatrix m a) => ControlCount -> QubitCount -> String -> m (Complex a)
 nameToMatrix controlCount qubitCount name =
     let
         total_size = toSize (controlCount + qubitCount)
@@ -157,7 +159,6 @@ nameToMatrix controlCount qubitCount name =
                 (identity big_size        <|> zero big_size small_size)
                                           <->
                 (zero small_size big_size <|> active)
-
 
 -- |moving returns a matrix representing:
 --   * moving the chosen qubits
