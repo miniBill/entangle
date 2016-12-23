@@ -8,8 +8,8 @@ import           Data.Function
 import           Data.List
 import           Data.Maybe
 
+import           Expr
 import           MatrixExtra
-import           SqMath
 import           Transitions
 
 -- |to_qmc takes a list of transitions and returns their representation in QPMC code

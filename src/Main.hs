@@ -9,10 +9,10 @@ import           Quipper
 import           Data.Matrix (Matrix)
 
 import           Examples
+import           Expr
 import           MatrixExtra
 import           Qpmc
 import           QTuple
-import           SqMath
 import           Transitions
 
 -- |fullOut takes a function returning a value in the 'Circ' monad,

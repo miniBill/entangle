@@ -10,10 +10,10 @@ import           Quipper.Monad
 import           BitQubitId
 import           Complex
 import           EntangleMonad
+import           Expr
 import qualified GatesMatrices
 import           MatrixExtra
 import           QTuple
-import           SqMath
 
 data StateName = StateName {
     snId :: Integer,  -- ^ state id
@@ -96,10 +96,10 @@ treeToTransitions final t = go (StateName 0 []) t where
 -- |getWires returns the qubit numbers involved in a gate.
 --getWires :: CircTree a -> [QubitId]
 getWires :: Show a => CircTree a -> [QubitId]
-getWires (LeafNode _)          = []
-getWires (GateNode _ qs cs c)  = qs ++ cs ++ getWires c
+getWires (LeafNode _)                        = []
+getWires (GateNode _ qs cs c)                = qs ++ cs ++ getWires c
 getWires (ParameterizedGateNode _ _ qs cs c) = qs ++ cs ++ getWires c
-getWires (MeasureNode q _ l r) = q : getWires l ++ getWires r
+getWires (MeasureNode q _ l r)               = q : getWires l ++ getWires r
 
 -- |sw q t is a function that swaps q and t
 sw :: Eq a => a -> a -> (a -> a)

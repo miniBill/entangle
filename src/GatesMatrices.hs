@@ -5,8 +5,8 @@ module GatesMatrices (
     nameToParameterizedMatrix) where
 
 import           Complex
+import           Expr
 import           MatrixExtra
-import           SqMath
 
 -- |nameToMatrix takes a gate name and returns its matrix
 nameToMatrix :: (GCMatrix m a, Floating a, Fractional a) => String -> m (Complex a)

@@ -37,22 +37,22 @@ data SymbolicMatrix a
     | VerticalJoin (SymbolicMatrix a) (SymbolicMatrix a)
 
 instance Show a => Show (StandardMatrix a) where
-    show (Identity i) = "ID(" ++ show i ++ ")"
-    show Hadamard = "HD"
-    show PauliX = "PX"
-    show PauliZ = "PZ"
-    show ControlNot = "CN"
-    show Swap = "SW"
-    show (PhaseShift d) = "PS(" ++ show d ++ ")"
+    show (Identity i)   = "identity(" ++ show i ++ ")"
+    show Hadamard       = "Hadamard"
+    show PauliX         = "PauliX"
+    show PauliZ         = "PauliZ"
+    show ControlNot     = "CNOT"
+    show Swap           = "Swap"
+    show (PhaseShift d) = "PhaseShift(" ++ show d ++ ")"
 
 instance Show a => Show (SymbolicMatrix a) where
     show (StandardMatrix m) = show m
-    show (Zero r c) = "Zero " ++ show r ++ " " ++ show c
-    show (Matrix r c _)  = "Matrix " ++ show r ++ " " ++ show c
-    show (Kronecker a b) = "Kronecker (" ++ show a ++ ") (" ++ show b ++ ")"
-    show (Multiply a b)  = "Multiply (" ++ show a ++ ") (" ++ show b ++ ")"
-    show (HorizontalJoin l r) = "HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
-    show (VerticalJoin u d) = "VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
+    show (Zero r c) = "?Zero " ++ show r ++ " " ++ show c
+    show (Matrix r c _)  = "?Matrix " ++ show r ++ " " ++ show c
+    show (Kronecker a b) = "kron (" ++ show a ++ ", " ++ show b ++ ")"
+    show (Multiply a b)  = "?Multiply (" ++ show a ++ ") (" ++ show b ++ ")"
+    show (HorizontalJoin l r) = "?HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
+    show (VerticalJoin u d) = "?VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
 
 class (Num a, Num (m a)) => GMatrix m a where
     -- |kronecker is the Kronecker product
@@ -117,7 +117,7 @@ instance Num (SymbolicMatrix a) where
 instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     kronecker a (StandardMatrix (Identity 1)) = a
     kronecker (StandardMatrix (Identity 1)) b = b
-    kronecker a b            = Kronecker a b
+    kronecker a b                             = Kronecker a b
 
     identity = StandardMatrix . Identity
 
@@ -133,7 +133,7 @@ instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     pauliZ = StandardMatrix PauliZ
     swap = StandardMatrix Swap
 
-instance (Floating a, Fractional a, Show a) => GCMatrix SymbolicMatrix a where
+instance (Floating a, Fractional a, Show a, Num a, Eq a) => GCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift $ t :+ 0
 
 downcast :: Integer -> Int

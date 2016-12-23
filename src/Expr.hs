@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 
-module SqMath (Expr, FromDouble(..)) where
+module Expr (Expr, FromDouble(..)) where
 
 import           Data.Ratio
 
@@ -14,6 +14,7 @@ data Expr
     | Sqrt Expr
     | Exp Expr
     | Pi
+    deriving Eq
 
 infixl 6 :+:
 infixl 7 :*:
@@ -139,4 +140,4 @@ instance Show Expr where
     show (Abs a)   = "abs(" ++ show a ++ ")"
     show (Sqrt a)  = "sqrt(" ++ show a ++ ")"
     show (Exp a)   = "exp(" ++ show a ++ ")"
-    show Pi = "pi"
+    show Pi        = "pi"
