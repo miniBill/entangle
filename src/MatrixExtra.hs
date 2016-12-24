@@ -9,7 +9,7 @@ module MatrixExtra (
     (<->), (<|>),
     GMatrix, GCMatrix,
 
-    eval,
+    eval, evalN,
 
     MeasureKind(..),
 
@@ -21,6 +21,7 @@ import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
 import qualified Data.Matrix
 
 import           Complex
+import           Expr
 
 data StandardMatrix a
     = Identity Integer
@@ -62,21 +63,24 @@ instance Show a => Show (SymbolicMatrix a) where
     show (HorizontalJoin l r) = "?HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
     show (VerticalJoin u d) = "?VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
 
-eval :: (Num a, Show a, GCMatrix m a) => SymbolicMatrix a -> m (Complex a)
+evalN :: SymbolicMatrix Expr -> Matrix Expr
+evalN = eval
+
+eval :: (Floating a, Num a, Show a, GMatrix m a) => SymbolicMatrix a -> m a
 eval (Zero r c) = zero r c
-eval (Matrix r c f) = matrix r c (\y x -> f y x :+ 0)
+eval (Matrix r c f) = matrix r c f
 eval (Kronecker a b) = kronecker (eval a) (eval b)
-eval (Multiply a b) = (eval a) * (eval b)
-eval (HorizontalJoin a b) = (eval a) <|> (eval b)
-eval (VerticalJoin a b) = (eval a) <-> (eval b)
+eval (Multiply a b) = eval a * eval b
+eval (HorizontalJoin a b) = eval a <|> eval b
+eval (VerticalJoin a b) = eval a <-> eval b
 eval (StandardMatrix m) = eval' m where
-    eval' (Identity i)   = identity i
-    eval' Hadamard       = hadamard
-    eval' PauliX         = pauliX
-    eval' PauliZ         = pauliZ
-    eval' Swap           = swap
-    eval' (PhaseShift d) = phaseShift d
-    eval' (Measure k)    = measure k
+    eval' (Identity i) = identity i
+    eval' Hadamard     = hadamard
+    eval' PauliX       = pauliX
+    eval' PauliZ       = pauliZ
+    eval' Swap         = swap
+    --eval' (PhaseShift d) = phaseShift d
+    eval' (Measure k)  = measure k
 
 data MeasureKind = UL | BR
 
