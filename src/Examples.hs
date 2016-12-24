@@ -95,7 +95,7 @@ oneq q1 = do
 
 
 doubleMeas :: (Qubit, Qubit, Qubit) -> Circ (Bit, Bit)
-doubleMeas (q1, q2, q3) = measure (q1, q2)
+doubleMeas (q1, q2, _) = measure (q1, q2)
 
 strange :: (Qubit, Qubit) -> Circ (Bit, Bit)
 strange (q1, q2) = do
@@ -160,7 +160,7 @@ groverNaive2 (q1,q2,q3) = do
     qn <- gate_X ql
     qo <- hadamard qm
     qp <- hadamard qn
-    qq <- hadamard qd
+    _ <- hadamard qd
     measure (qo,qp)
 
 
@@ -252,7 +252,7 @@ recCirc (qa,qb) = do
   m1 <- measure qc
   m2 <- measure qb
   bool1 <- dynamic_lift m1
-  bool2 <- dynamic_lift m2
+  _ <- dynamic_lift m2
   if bool1
     then
       return (qd,qb)
@@ -263,7 +263,7 @@ recCirc' :: (Qubit, Qubit) -> Circ RecAction
 recCirc' (qa, qb) = do
   qc <- hadamard qa
   qd <- qnot qc `controlled` qb
-  m1 <- measure qc
+  m1 <- measure qd
   m2 <- measure qb
   bool1 <- dynamic_lift m1
   bool2 <- dynamic_lift m2

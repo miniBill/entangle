@@ -5,8 +5,6 @@ module SymbolicMatrix (
     SymbolicMatrix
     ) where
 
-import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
-
 import           Complex
 import           QMatrix
 import           Qpmc
@@ -56,6 +54,12 @@ instance Num (SymbolicMatrix a) where
     (*) a (StandardMatrix (Identity _)) = a
     (*) a b                             = Multiply a b
 
+    (+) = error "+ undefined for SymbolicMatrix"
+    (-) = error "- undefined for SymbolicMatrix"
+    abs = error "abs undefined for SymbolicMatrix"
+    signum = error "signum undefined for SymbolicMatrix"
+    fromInteger = error "fromInteger undefined for SymbolicMatrix"
+
 instance (Num a) => QMatrix SymbolicMatrix a where
     kronecker a (StandardMatrix (Identity 1)) = a
     kronecker (StandardMatrix (Identity 1)) b = b
@@ -75,7 +79,7 @@ instance (Num a) => QMatrix SymbolicMatrix a where
     swap = StandardMatrix Swap
     measure = StandardMatrix . Measure
 
-instance (Floating a, Fractional a, Show a, Num a, Eq a) => QCMatrix SymbolicMatrix a where
+instance (Floating a, Fractional a, Num a) => QCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift $ t :+ 0
 
 instance Show a => ToQpmc (SymbolicMatrix a) where

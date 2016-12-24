@@ -10,13 +10,12 @@ import           Data.List
 import           Data.Maybe
 
 import           Complex
-import           QMatrix
 import           Transitions
 
 class ToQpmc a where
     toQpmc :: a -> String
 
-instance (ToQpmc (m (Complex a)), QCMatrix m a, Show a) => ToQpmc [Transitions m a] where
+instance ToQpmc (m (Complex a)) => ToQpmc [Transitions m a] where
     toQpmc ts = "qmc\n"
             ++ concatMap transitionToMatrix (concatMap trDestinations ts)
             ++ "module test\n"
@@ -50,7 +49,7 @@ finalToQpmc :: StateName -> String
 finalToQpmc s = "  [] " ++ stateNameToQpmcGuard s ++ " -> true;\n"
 
 -- |transitionToMatrix returns the QPMC code for a matrix
-transitionToMatrix :: (ToQpmc (m (Complex a)), QCMatrix m a, Show a) => Transition m a -> String
+transitionToMatrix :: ToQpmc (m (Complex a)) => Transition m a -> String
 transitionToMatrix t = fromMaybe "" $ do
     mat <- trMatrix t
     let inner = toQpmc mat

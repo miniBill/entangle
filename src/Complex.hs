@@ -14,6 +14,8 @@ instance Num a => Num (Complex a) where
     (a :+ b) - (c :+ d) = (a - c) :+ (b - d)
     (a :+ b) * (c :+ d) = (a * c - b * d) :+ (b * c + a * d)
     fromInteger n = fromInteger n :+ 0
+    abs = error "abs not implemented because it would need a Floating instance for the type variable"
+    signum = error "signum makes no sense for complex numbers"
 
 instance Fractional a => Fractional (Complex a) where
     recip (a :+ b) =
@@ -33,6 +35,25 @@ instance Floating a => Floating (Complex a) where
             aabs (a :+ b) = sqrt (a * a + b * b)
         in
             (sqrt r :+ 0) * (z + rc) / (aabs (z + rc) :+ 0)
+
+    pi = error "pi"
+
+    log = error "log not implemented"
+    exp = error "exp not implemented"
+
+    tan = error "tan not implemented"
+    atan = error "atan not implemented"
+    atanh = error "atanh not implemented"
+
+    sin = error "sin not implemented"
+    asin = error "asin not implemented"
+    sinh = error "sinh not implemented"
+    asinh = error "asinh not implemented"
+
+    cos = error "cos not implemented"
+    acos = error "acos not implemented"
+    cosh = error "cosh not implemented"
+    acosh = error "acosh not implemented"
 
 instance (Show a, Eq a, Num a) => Show (Complex a) where
     show (a :+ b)

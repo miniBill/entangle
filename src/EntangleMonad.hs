@@ -59,17 +59,17 @@ instance Monad CircTree where
     (LeafNode x) >>= f = f x
 
 instance Foldable CircTree where
-    foldMap f (GateNode _ _ _ t)    = foldMap f t
+    foldMap f (GateNode _ _ _ t)                = foldMap f t
     foldMap f (ParameterizedGateNode _ _ _ _ t) = foldMap f t
-    foldMap f (MeasureNode _ _ l r) = foldMap f l <> foldMap f r
-    foldMap f (LeafNode x)          = f x
+    foldMap f (MeasureNode _ _ l r)             = foldMap f l <> foldMap f r
+    foldMap f (LeafNode x)                      = f x
 
 instance Show a => Show (CircTree a) where
     show = showTree 0 show' child where
-        child (GateNode _ _ _ c)    = [c]
+        child (GateNode _ _ _ c)                = [c]
         child (ParameterizedGateNode _ _ _ _ c) = [c]
-        child (MeasureNode _ _ l r) = [l, r]
-        child (LeafNode _)          = []
+        child (MeasureNode _ _ l r)             = [l, r]
+        child (LeafNode _)                      = []
         show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
             qubits   = intercalate ", " $ map show qs
             controls = intercalate ", " $ map show cs
@@ -143,12 +143,6 @@ assumeQubit (Endpoint_Bit _) = error "Using bits as controls is not supported ye
 mydtransformer :: DynamicTransformer EntangleMonad QubitId BitId
 mydtransformer = DT mytransformer (error "Boxed circuits are not supported yet") transformDynamicLifting
 
---instance Show a => Show (ReadWrite a) where
---    show (RW_Return a) = "RW_Return " ++ show a
---    show (RW_Write gate next) = "RW_Write " ++ show gate ++ "\n" ++ show next
---    show (RW_Read wire f) = "RW_Read " ++ show wire ++ "\n" ++ show (f True)
---    show (RW_Subroutine boxId _ next) = "RW_Subroutine " ++ show boxId ++ "\n" ++ show next
-
 showIndented :: Show a => Int -> a -> String
 showIndented i x = indent i ++ replace (show x) where
     replace []        = []
@@ -156,9 +150,7 @@ showIndented i x = indent i ++ replace (show x) where
     replace (s:ss)    = s : replace ss
 
 -- |buildTree takes a 'Circuit', its arity and returns a tree representing it.
---buildTree :: DBCircuit x -> Int -> CircTree x
-buildTree :: Show x => DBCircuit x -> Int -> CircTree x
---buildTree circuit n | trace ("n:\n    " ++ show n ++ "\ncircuit:\n" ++ showIndented 1 circuit) False = undefined
+buildTree :: DBCircuit x -> Int -> CircTree x
 buildTree circuit n = fmap (fst . (\(_, _, x) -> x)) res where
     res = untangle monad DM.empty []
     monad = transform_dbcircuit mydtransformer circuit bindings

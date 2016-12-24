@@ -31,6 +31,9 @@ instance Num QubitId where
     (+) = liftQubit (+)
     (-) = liftQubit (-)
     fromInteger = qubitId . fromIntegral
+    (*) = error "* makes no sense for QubitId"
+    abs = error "abs makes no sense for QubitId"
+    signum = error "signum makes no sense for QubitId"
 
 instance Show BitId where
     show (BitId i) = "bit " ++ show i

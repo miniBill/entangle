@@ -56,19 +56,17 @@ type ControlCount = QubitId
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
---circMatrices :: (Floating a, FromDouble a, QTuple q) => (q -> Circ b) -> [Transitions a]
-circMatrices :: (Floating a, FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> (q -> Circ b) -> [Transitions m a]
+circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> (q -> Circ b) -> [Transitions m a]
 circMatrices final = treeToTransitions final . circToTree
 
---circToTree :: QTuple a => (a -> Circ b) -> CircTree b
-circToTree :: (Show b, QTuple a) => (a -> Circ b) -> CircTree b
+circToTree :: QTuple a => (a -> Circ b) -> CircTree b
 circToTree mcirc = tree where
     arg = tupleFromList $ map qubit_of_wire [1..]
     circ = extract_general arity_empty (mcirc arg)
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (Fractional a, Floating a, FromDouble a, Show b, QCMatrix m a) => (b -> [Transition m a]) -> CircTree b -> [Transitions m a]
+treeToTransitions :: (FromDouble a, Show b, QCMatrix m a) => (b -> [Transition m a]) -> CircTree b -> [Transitions m a]
 treeToTransitions final t = go (StateName 0 []) t where
     wires :: [QubitId]
     wires = getWires t
@@ -80,11 +78,11 @@ treeToTransitions final t = go (StateName 0 []) t where
         tr = Transition (Just mat) state'
         mat = gateToMatrix qubit_max name qs cts
         state' = StateName (succ i) bs
-    go sn@(StateName i bs) (ParameterizedGateNode name t qs cts c) = Transitions sn [tr] : go state' c where
+    go sn@(StateName i bs) (ParameterizedGateNode name k qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
-        mat = parameterizedGateToMatrix qubit_max name t qs cts
+        mat = parameterizedGateToMatrix qubit_max name k qs cts
         state' = StateName (succ i) bs
-    go sn@(StateName i bs) (MeasureNode qi b l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
+    go sn@(StateName i bs) (MeasureNode qi _ l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
         lmat = between (pred qi) (QMatrix.measure UL) (qubit_max - qi)
         ls = StateName (succ i) (bs ++ [False])
         lt = Transition (Just lmat) ls
@@ -108,7 +106,7 @@ sw q t x | x == q = t
          | otherwise = x
 
 -- |gateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrix :: (Fractional a, Floating a, QCMatrix m a) => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
+gateToMatrix :: QCMatrix m a => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
 gateToMatrix size name qs cs =
     let
         wires = cs ++ qs
@@ -125,7 +123,7 @@ gateToMatrix size name qs cs =
         moving size swaps mat
 
 -- |parameterizedGateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-parameterizedGateToMatrix :: (Fractional a, Floating a, FromDouble a, QCMatrix m a) => QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
+parameterizedGateToMatrix :: (FromDouble a, QCMatrix m a) => QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
 parameterizedGateToMatrix size name t qs cs =
     let
         wires = cs ++ qs
@@ -154,7 +152,7 @@ generateSwaps (q:qs) (t:ts)
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
-nameToMatrix :: (Fractional a, Floating a, QCMatrix m a) => ControlCount -> QubitCount -> String -> m (Complex a)
+nameToMatrix :: (Floating a, QCMatrix m a) => ControlCount -> QubitCount -> String -> m (Complex a)
 nameToMatrix controlCount qubitCount name =
     let
         total_size = toSize (controlCount + qubitCount)
@@ -172,7 +170,7 @@ nameToMatrix controlCount qubitCount name =
 -- |nameToParameterizedMatrix is the matrix for the given named parameterized gate.
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
-nameToParameterizedMatrix :: (Fractional a, Floating a, FromDouble a, QCMatrix m a) => Double -> ControlCount -> QubitCount -> String -> m (Complex a)
+nameToParameterizedMatrix :: (FromDouble a, QCMatrix m a) => Double -> ControlCount -> QubitCount -> String -> m (Complex a)
 nameToParameterizedMatrix t controlCount qubitCount name =
     let
         total_size = toSize (controlCount + qubitCount)
@@ -191,18 +189,18 @@ nameToParameterizedMatrix t controlCount qubitCount name =
 --   * moving the chosen qubits
 --   * applying the given matrix
 --   * moving the qubits back to their original position
-moving :: (Num a, QMatrix m a) => QubitCount -> [(QubitId, QubitId)] -> m a -> m a
+moving :: QMatrix m a => QubitCount -> [(QubitId, QubitId)] -> m a -> m a
 moving size moves m = back * m * forth where
     forth = move size moves
     back  = move size $ reverse moves
 
 -- |move is the matrix that moves the chosen qubits
-move :: (Num a, QMatrix m a) => QubitCount -> [(QubitId, QubitId)] -> m a
+move :: QMatrix m a => QubitCount -> [(QubitId, QubitId)] -> m a
 move size = foldr f $ identity (toSize size) where
     f (t1, t2) m = swapToMatrix size t1 t2 * m
 
 -- |swapToMatrix is the matrix swapping the chosen qubits
-swapToMatrix :: (Num a, QMatrix m a) => QubitCount -> QubitId -> QubitId -> m a
+swapToMatrix :: QMatrix m a => QubitCount -> QubitId -> QubitId -> m a
 swapToMatrix size n m
     | n > m = swapToMatrix size m n
     | n == m = identity $ toSize size
