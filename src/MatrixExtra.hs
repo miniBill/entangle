@@ -5,9 +5,11 @@
 
 module MatrixExtra (
     kronecker, identity, matrix, zero, matrixToQpmc, hadamard,
-    pauliX, pauliZ, swap, swapSqrt, phaseShift,
+    pauliX, pauliZ, swap, swapSqrt, phaseShift, measureMatrix,
     (<->), (<|>),
     GMatrix, GCMatrix,
+
+    MeasureKind(..),
 
     SymbolicMatrix
     ) where
@@ -26,6 +28,7 @@ data StandardMatrix a
     | ControlNot
     | Swap
     | PhaseShift a
+    | Measure MeasureKind
 
 data SymbolicMatrix a
     = StandardMatrix (StandardMatrix a)
@@ -44,15 +47,20 @@ instance Show a => Show (StandardMatrix a) where
     show ControlNot     = "CNOT"
     show Swap           = "Swap"
     show (PhaseShift d) = "PhaseShift(" ++ show d ++ ")"
+    show (Measure UL)   = "M0"
+    show (Measure BR)   = "M1"
 
 instance Show a => Show (SymbolicMatrix a) where
     show (StandardMatrix m) = show m
     show (Zero r c) = "?Zero " ++ show r ++ " " ++ show c
+    show (Matrix 2 2 f) = "[" ++ show (f 1 1) ++ ", " ++ show (f 1 2) ++ "; " ++ show (f 2 1) ++ ", " ++ show (f 2 2) ++ "]"
     show (Matrix r c _)  = "?Matrix " ++ show r ++ " " ++ show c
     show (Kronecker a b) = "kron (" ++ show a ++ ", " ++ show b ++ ")"
     show (Multiply a b)  = "?Multiply (" ++ show a ++ ") (" ++ show b ++ ")"
     show (HorizontalJoin l r) = "?HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
     show (VerticalJoin u d) = "?VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
+
+data MeasureKind = UL | BR
 
 class (Num a, Num (m a)) => GMatrix m a where
     -- |kronecker is the Kronecker product
@@ -93,6 +101,18 @@ class (Num a, Num (m a)) => GMatrix m a where
         swapMatrix 4 4 = 1
         swapMatrix _ _ = 0
 
+    -- |measureMatrix is the measure matrix
+    -- measureMatrix UL is [1, 0; 0, 0] whereas measureMatrix BR is [0, 0; 0, 1]
+    measureMatrix :: MeasureKind -> m a
+    measureMatrix k =
+        let
+            gen UL 1 1 = 1
+            gen BR 2 2 = 1
+            gen _ _ _  = 0
+        in
+            matrix 2 2 (gen k)
+
+
 class (Fractional a, Floating a, GMatrix m (Complex a)) => GCMatrix m a where
     -- |swapSqrt is the gate_W, the square root of the swap matrix
     swapSqrt :: m (Complex a)
@@ -112,7 +132,9 @@ class (Fractional a, Floating a, GMatrix m (Complex a)) => GCMatrix m a where
         phaseShiftMatrix _ _ = 0
 
 instance Num (SymbolicMatrix a) where
-    (*) = Multiply
+    (*) (StandardMatrix (Identity _)) b = b
+    (*) a (StandardMatrix (Identity _)) = a
+    (*) a b                             = Multiply a b
 
 instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     kronecker a (StandardMatrix (Identity 1)) = a
@@ -132,6 +154,7 @@ instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     pauliX = StandardMatrix PauliX
     pauliZ = StandardMatrix PauliZ
     swap = StandardMatrix Swap
+    measureMatrix = StandardMatrix . Measure
 
 instance (Floating a, Fractional a, Show a, Num a, Eq a) => GCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift $ t :+ 0

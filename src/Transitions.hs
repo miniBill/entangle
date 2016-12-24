@@ -151,19 +151,6 @@ generateSwaps (q:qs) (t:ts)
     | q == t = generateSwaps qs ts
     | otherwise = (q, t) : generateSwaps (map (sw q t) qs) ts
 
-data MeasureKind = UL | BR
-
--- |measureMatrix is the measure matrix
--- measureMatrix True is (1 0; 0 0) whereas measureMatrix False is (0 0; 0 1)
-measureMatrix :: (Num a, GMatrix m a) => MeasureKind -> m a
-measureMatrix k =
-    let
-        gen UL 1 1 = 1
-        gen BR 2 2 = 1
-        gen _ _ _  = 0
-    in
-        matrix 2 2 (gen k)
-
 -- |nameToMatrix is the matrix for the given named gate.
 -- It returns a matrix with an identity in the top left
 -- and the action in the bottom right.
