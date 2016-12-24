@@ -5,9 +5,11 @@
 
 module MatrixExtra (
     kronecker, identity, matrix, zero, matrixToQpmc, hadamard,
-    pauliX, pauliZ, swap, swapSqrt, phaseShift, measureMatrix,
+    pauliX, pauliZ, swap, swapSqrt, phaseShift, measure,
     (<->), (<|>),
     GMatrix, GCMatrix,
+
+    eval,
 
     MeasureKind(..),
 
@@ -60,6 +62,22 @@ instance Show a => Show (SymbolicMatrix a) where
     show (HorizontalJoin l r) = "?HorizontalJoin (" ++ show l ++ ") (" ++ show r ++ ")"
     show (VerticalJoin u d) = "?VerticalJoin (" ++ show u ++ ") (" ++ show d ++ ")"
 
+eval :: (Num a, Show a, GCMatrix m a) => SymbolicMatrix a -> m (Complex a)
+eval (Zero r c) = zero r c
+eval (Matrix r c f) = matrix r c (\y x -> f y x :+ 0)
+eval (Kronecker a b) = kronecker (eval a) (eval b)
+eval (Multiply a b) = (eval a) * (eval b)
+eval (HorizontalJoin a b) = (eval a) <|> (eval b)
+eval (VerticalJoin a b) = (eval a) <-> (eval b)
+eval (StandardMatrix m) = eval' m where
+    eval' (Identity i)   = identity i
+    eval' Hadamard       = hadamard
+    eval' PauliX         = pauliX
+    eval' PauliZ         = pauliZ
+    eval' Swap           = swap
+    eval' (PhaseShift d) = phaseShift d
+    eval' (Measure k)    = measure k
+
 data MeasureKind = UL | BR
 
 class (Num a, Num (m a)) => GMatrix m a where
@@ -101,10 +119,10 @@ class (Num a, Num (m a)) => GMatrix m a where
         swapMatrix 4 4 = 1
         swapMatrix _ _ = 0
 
-    -- |measureMatrix is the measure matrix
-    -- measureMatrix UL is [1, 0; 0, 0] whereas measureMatrix BR is [0, 0; 0, 1]
-    measureMatrix :: MeasureKind -> m a
-    measureMatrix k =
+    -- |measure is the measure matrix
+    -- measure UL is [1, 0; 0, 0] whereas measure BR is [0, 0; 0, 1]
+    measure :: MeasureKind -> m a
+    measure k =
         let
             gen UL 1 1 = 1
             gen BR 2 2 = 1
@@ -154,7 +172,7 @@ instance (Show a, Num a) => GMatrix SymbolicMatrix a where
     pauliX = StandardMatrix PauliX
     pauliZ = StandardMatrix PauliZ
     swap = StandardMatrix Swap
-    measureMatrix = StandardMatrix . Measure
+    measure = StandardMatrix . Measure
 
 instance (Floating a, Fractional a, Show a, Num a, Eq a) => GCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift $ t :+ 0

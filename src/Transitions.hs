@@ -85,11 +85,11 @@ treeToTransitions final t = go (StateName 0 []) t where
         mat = parameterizedGateToMatrix qubit_max name t qs cts
         state' = StateName (succ i) bs
     go sn@(StateName i bs) (MeasureNode qi b l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
-        lmat = between (pred qi) (measureMatrix UL) (qubit_max - qi)
+        lmat = between (pred qi) (MatrixExtra.measure UL) (qubit_max - qi)
         ls = StateName (succ i) (bs ++ [False])
         lt = Transition (Just lmat) ls
 
-        rmat = between (pred qi) (measureMatrix BR) (qubit_max - qi)
+        rmat = between (pred qi) (MatrixExtra.measure BR) (qubit_max - qi)
         rs = StateName (succ i) (bs ++ [True])
         rt = Transition (Just rmat) rs
 
