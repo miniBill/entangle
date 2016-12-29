@@ -2,7 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module SymbolicMatrix (
-    SymbolicMatrix
+    SymbolicMatrix,
+    eval
     ) where
 
 import           Complex
@@ -14,7 +15,7 @@ data StandardMatrix a
     | Hadamard
     | PauliX
     | PauliZ
-    | ControlNot
+    -- | ControlNot
     | Swap
     | PhaseShift a
     | Measure MeasureKind
@@ -33,7 +34,7 @@ instance Show a => Show (StandardMatrix a) where
     show Hadamard       = "Hadamard"
     show PauliX         = "PauliX"
     show PauliZ         = "PauliZ"
-    show ControlNot     = "CNOT"
+    --show ControlNot     = "CNOT"
     show Swap           = "Swap"
     show (PhaseShift d) = "PhaseShift(" ++ show d ++ ")"
     show (Measure UL)   = "M0"
@@ -84,3 +85,19 @@ instance (Floating a, Fractional a, Num a) => QCMatrix SymbolicMatrix a where
 
 instance Show a => ToQpmc (SymbolicMatrix a) where
     toQpmc = show
+
+eval :: (Floating a, Show a, QCMatrix m a) => SymbolicMatrix a -> m (Complex a)
+eval (Zero r c) = zero r c
+eval (Matrix r c f) = matrix r c $ \y x -> f y x :+ 0
+eval (Kronecker a b) = kronecker (eval a) (eval b)
+eval (Multiply a b) = eval a * eval b
+eval (HorizontalJoin a b) = eval a <|> eval b
+eval (VerticalJoin a b) = eval a <-> eval b
+eval (StandardMatrix m) = eval' m where
+    eval' (Identity i)   = identity i
+    eval' Hadamard       = hadamard
+    eval' PauliX         = pauliX
+    eval' PauliZ         = pauliZ
+    eval' Swap           = swap
+    eval' (PhaseShift d) = phaseShift d
+    eval' (Measure k)    = measure k

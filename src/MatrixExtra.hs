@@ -4,16 +4,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    eval, evalN
+    eval, evalN, kronDecompose2
     ) where
 
 import           Data.List
-import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
+import           Data.Matrix    hiding (identity, matrix, zero, (<->), (<|>))
 import qualified Data.Matrix
 
+import           Complex
 import           Expr
 import           QMatrix
 import           Qpmc
+import           SymbolicMatrix
 
 downcast :: Integer -> Int
 downcast x
@@ -47,6 +49,8 @@ instance Num a => QMatrix Matrix a where
 
     (<|>) = (Data.Matrix.<|>)
 
+instance (Fractional a, Floating a) => QCMatrix Matrix a where
+
 instance Show a => ToQpmc (Matrix a) where
     toQpmc mat =
         let
@@ -55,21 +59,38 @@ instance Show a => ToQpmc (Matrix a) where
         in
             "[" ++ inner ++ "]"
 
-evalN :: SymbolicMatrix Expr -> Matrix Expr
+evalN :: SymbolicMatrix Expr -> Matrix (Complex Expr)
 evalN = eval
 
-eval :: (Floating a, Num a, Show a, QMatrix m a) => SymbolicMatrix a -> m a
-eval (Zero r c) = zero r c
-eval (Matrix r c f) = matrix r c f
-eval (Kronecker a b) = kronecker (eval a) (eval b)
-eval (Multiply a b) = eval a * eval b
-eval (HorizontalJoin a b) = eval a <|> eval b
-eval (VerticalJoin a b) = eval a <-> eval b
-eval (StandardMatrix m) = eval' m where
-    eval' (Identity i) = identity i
-    eval' Hadamard     = hadamard
-    eval' PauliX       = pauliX
-    eval' PauliZ       = pauliZ
-    eval' Swap         = swap
-    --eval' (PhaseShift d) = phaseShift d
-    eval' (Measure k)  = measure k
+-- ⎛⎜⎝⎞⎟⎠
+--             ⎛a c⎞   ⎛p⎞
+-- ⎛a⎞   ⎛c⎞   ⎜a d⎟   ⎜q⎟
+-- ⎜ ⎟ x ⎜ ⎟ = ⎜   ⎟ = ⎜ ⎟
+-- ⎝b⎠   ⎝d⎠   ⎜b c⎟   ⎜r⎟
+--             ⎝b d⎠   ⎝s⎠
+-- ac = p
+-- ad = q
+-- bc = r
+-- bd = s
+-- |a|² + |b|² = 1
+-- |c|² + |d|² = 2
+
+-- a = 0 => |b| = 1
+-- bc bd = r s
+
+kronDecompose2 :: (Eq a, Num a) => Matrix a -> Either String (Matrix a, Matrix a)
+kronDecompose2 m
+    | ncols m /= 1 = Left "kronDecompose2 only supports vectors"
+    | nrows m /= 4 = Left "kronDecompose2 only supports vectors with 4 elements for now"
+    | otherwise =
+        let
+            p = m ! (1, 1)
+            q = m ! (2, 1)
+            r = m ! (3, 1)
+            s = m ! (4, 1)
+        in
+            if p == 0 || q == 0 || r == 0 || s == 0
+                then
+                    Left "Ambiguous"
+                else
+                    Right (undefined, undefined)
