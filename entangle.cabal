@@ -8,7 +8,7 @@ data-dir: ""
 
 library
     hs-source-dirs: src/lib
-    build-depends: base >= 4.0 && <5.0, quipper >=0.7 && <0.9, containers >= 0.5&& <0.6, matrix >=0.3 && <0.5, mtl >=2.1 && <2.3
+    build-depends: base >= 4.0 && <5.0, quipper-core >=0.7 && <0.9, containers >= 0.5&& <0.6, matrix >=0.3 && <0.5, mtl >=2.1 && <2.3
     ghc-options: -Wall -Werror
  -- ghc-options: -Wall -fno-warn-type-defaults -fno-warn-unused-do-bind -fno-warn-orphans -fprof-auto -fprof-cafs -Werror
 

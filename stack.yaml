@@ -3,10 +3,8 @@ extra-package-dbs: []
 packages:
 - '.'
 extra-deps:
-- easyrender-0.1.1.2
-- quipper-0.8
+- quipper-core-0.8
 - random-1.0.1.1
-- superdoc-0.1.2.4
-resolver: lts-7.14
 explicit-setup-deps:
   easyrender: true
+resolver: lts-7.14
