@@ -155,17 +155,9 @@ generateSwaps (q:qs) (t:ts)
 nameToMatrix :: (Floating a, QCMatrix m a) => ControlCount -> QubitCount -> String -> m (Complex a)
 nameToMatrix controlCount qubitCount name =
     let
-        total_size = toSize (controlCount + qubitCount)
-        small_size = if qubitCount == 0 then 0 else toSize qubitCount
-        big_size = total_size - small_size
         active = GatesMatrices.nameToMatrix name
     in
-        if big_size == 0
-            then active
-            else
-                (identity big_size        <|> zero big_size small_size)
-                                          <->
-                (zero small_size big_size <|> active)
+        identityPlusMatrix controlCount qubitCount active
 
 -- |nameToParameterizedMatrix is the matrix for the given named parameterized gate.
 -- It returns a matrix with an identity in the top left
@@ -173,10 +165,17 @@ nameToMatrix controlCount qubitCount name =
 nameToParameterizedMatrix :: (FromDouble a, QCMatrix m a) => Double -> ControlCount -> QubitCount -> String -> m (Complex a)
 nameToParameterizedMatrix t controlCount qubitCount name =
     let
+        active = GatesMatrices.nameToParameterizedMatrix name t
+    in
+        identityPlusMatrix controlCount qubitCount active
+
+-- |identityPlusMatrix is the matrix composed by putting the given matrix in the bottom right,
+-- an identity in the top left and zeroes elsewhere.
+identityPlusMatrix controlCount qubitCount active =
+    let
         total_size = toSize (controlCount + qubitCount)
         small_size = if qubitCount == 0 then 0 else toSize qubitCount
         big_size = total_size - small_size
-        active = GatesMatrices.nameToParameterizedMatrix name t
     in
         if big_size == 0
             then active
