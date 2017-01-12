@@ -171,6 +171,7 @@ nameToParameterizedMatrix t controlCount qubitCount name =
 
 -- |identityPlusMatrix is the matrix composed by putting the given matrix in the bottom right,
 -- an identity in the top left and zeroes elsewhere.
+identityPlusMatrix :: QMatrix m a => QubitId -> QubitId -> m a -> m a
 identityPlusMatrix controlCount qubitCount active =
     let
         total_size = toSize (controlCount + qubitCount)
