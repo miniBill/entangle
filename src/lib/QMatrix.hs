@@ -17,11 +17,15 @@ data MeasureKind = UL | BR
 class (Num a, Num (m a)) => QMatrix m a where
     -- |kronecker is the Kronecker product
     kronecker :: m a -> m a -> m a
-    identity :: Integer -> m a
-    zero :: Integer -> Integer -> m a
     matrix :: Integer -> Integer -> (Integer -> Integer -> a) -> m a
     (<->) :: m a -> m a -> m a
     (<|>) :: m a -> m a -> m a
+
+    zero :: Integer -> Integer -> m a
+    zero r c = matrix r c $ \_ _ -> 0
+
+    identity :: Integer -> m a
+    identity n = matrix n n $ \r c -> if r == c then 1 else 0
 
     -- |hadamard is the matrix for the Hadamard gate
     hadamard :: Floating a => m a

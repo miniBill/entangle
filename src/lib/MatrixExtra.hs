@@ -4,18 +4,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    eval, evalN, kronDecompose2
+    kronDecompose2
     ) where
 
 import           Data.List
-import           Data.Matrix    hiding (identity, matrix, zero, (<->), (<|>))
+import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
 import qualified Data.Matrix
 
-import           Complex
-import           Expr
 import           QMatrix
 import           Qpmc
-import           SymbolicMatrix
 
 downcast :: Integer -> Int
 downcast x
@@ -58,9 +55,6 @@ instance Show a => ToQpmc (Matrix a) where
             inner = intercalate ";" $ map sl $ toLists mat
         in
             "[" ++ inner ++ "]"
-
-evalN :: SymbolicMatrix Expr -> Matrix (Complex Expr)
-evalN = eval
 
 -- ⎛⎜⎝⎞⎟⎠
 --             ⎛a c⎞   ⎛p⎞
