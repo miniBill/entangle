@@ -52,7 +52,7 @@ instance Show a => Show (StandardMatrix (Complex a)) where
     show (Measure BR)   = "M1"
     show (PhaseShift d) = "PhaseShift(" ++ show d ++ ")"
 
-instance Show a => Show (SymbolicMatrix a) where
+instance (Floating a, Show a) => Show (SymbolicMatrix a) where
     show (StandardMatrix m) = show m
     show (Zero r c) = show $ Matrix r c $ \_ _ -> 0
     show (Matrix r c f) =
@@ -62,7 +62,11 @@ instance Show a => Show (SymbolicMatrix a) where
         in
             "[" ++ rows ++ "]"
     show (Kronecker a b) = "kron (" ++ show a ++ ", " ++ show b ++ ")"
-    show (Multiply a b)  = "?Multiply (" ++ show a ++ ") (" ++ show b ++ ")"
+    show m@(Multiply _ _)  =
+        let
+            (ExplodedMatrix r c f) = eval m
+        in
+            show $ Matrix r c f
 
 instance Num (SymbolicMatrix a) where
     (*) (StandardMatrix (Identity _)) b = b
@@ -110,6 +114,9 @@ instance Floating a => QMatrix ExplodedMatrix a where
         in
             ExplodedMatrix (ra * rb) (ca * cb) gen
 
+    (<->) = liftEvalE (+) min $ \(ExplodedMatrix r1 _ m1) (ExplodedMatrix _ _ m2) r c -> if r <= r1 then m1 r c else m2 (r - r1) c
+    (<|>) = liftEvalE min (+) $ \(ExplodedMatrix _ c1 m1) (ExplodedMatrix _ _ m2) r c -> if c <= c1 then m1 r c else m2 r (c - c1)
+
 instance Num a => Num (ExplodedMatrix a) where
     (ExplodedMatrix ra ca fa) * (ExplodedMatrix rb cb fb) =
         let
@@ -136,10 +143,21 @@ liftEval rf cf vf a b =
     in
         Matrix (rf ra rb) (cf ca cb) f
 
+liftEvalE :: QMatrix m a =>
+    (Integer -> Integer -> Integer) ->
+    (Integer -> Integer -> Integer) ->
+    (ExplodedMatrix a -> ExplodedMatrix a -> Integer -> Integer -> a) ->
+    (ExplodedMatrix a -> ExplodedMatrix a -> m a)
+liftEvalE rf cf vf xa@(ExplodedMatrix ra ca _) xb@(ExplodedMatrix rb cb _) =
+    let
+        f = vf xa xb
+    in
+        matrix (rf ra rb) (cf ca cb) f
+
 instance (Floating a, Fractional a) => QCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift t
 
-instance Show a => ToQpmc (SymbolicMatrix a) where
+instance (Floating a, Show a) => ToQpmc (SymbolicMatrix a) where
     toQpmc = show
 
 eval :: (Floating a, QMatrix m a) => SymbolicMatrix a -> m a
