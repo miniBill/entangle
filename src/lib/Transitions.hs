@@ -76,11 +76,11 @@ treeToTransitions final t = go (StateName 0 []) t where
         f = final x
     go sn@(StateName i bs) (GateNode name qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
-        mat = gateToMatrix qubit_max name qs cts
+        mat = gateToMatrixNoParam qubit_max name qs cts
         state' = StateName (succ i) bs
     go sn@(StateName i bs) (ParameterizedGateNode name k qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
-        mat = parameterizedGateToMatrix qubit_max name k qs cts
+        mat = gateToMatrixParameterized qubit_max name k qs cts
         state' = StateName (succ i) bs
     go sn@(StateName i bs) (MeasureNode qi _ l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
         lmat = between (pred qi) (QMatrix.measure UL) (qubit_max - qi)
@@ -105,9 +105,24 @@ sw q t x | x == q = t
          | x == t = q
          | otherwise = x
 
--- |gateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrix :: QCMatrix m a => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
-gateToMatrix size name qs cs =
+-- |gateToMatrixNoParam takes the total number of qubits, a gate data and returns the matrix needed to represent it.
+gateToMatrixNoParam :: QCMatrix m a => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
+gateToMatrixNoParam size name qs cs =
+    let
+        active = GatesMatrices.nameToMatrix name
+    in
+        gateToMatrix size qs cs active
+
+-- |gateToMatrixParameterized takes the total number of qubits, a gate data and returns the matrix needed to represent it.
+gateToMatrixParameterized :: (FromDouble a, QCMatrix m a) => QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
+gateToMatrixParameterized size name t qs cs =
+    let
+        active = GatesMatrices.nameToMatrixParameterized name t
+    in
+        gateToMatrix size qs cs active
+
+-- |gateToMatrix takes the total number of qubits, an active matrix and returns the matrix needed to represent the full gate.
+gateToMatrix size qs cs active =
     let
         wires = cs ++ qs
         mi = minimum wires
@@ -116,28 +131,12 @@ gateToMatrix size name qs cs =
         qubitCount = qubitId $ length qs
         ma = pred $ mi + controlCount + qubitCount
         l = pred mi
-        m = nameToMatrix controlCount qubitCount name
+        m = identityPlusMatrix controlCount qubitCount active
         r = size - ma
         mat = between l m r
     in
         moving size swaps mat
 
--- |parameterizedGateToMatrix takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-parameterizedGateToMatrix :: (FromDouble a, QCMatrix m a) => QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
-parameterizedGateToMatrix size name t qs cs =
-    let
-        wires = cs ++ qs
-        mi = minimum wires
-        swaps = reverse $ generateSwaps wires [mi..]
-        controlCount = qubitId $ length cs
-        qubitCount = qubitId $ length qs
-        ma = pred $ mi + controlCount + qubitCount
-        l = pred mi
-        m = nameToParameterizedMatrix t controlCount qubitCount name
-        r = size - ma
-        mat = between l m r
-    in
-        moving size swaps mat
 
 -- |generateSwaps takes a finite list of source qubits, a list of target qubits,
 -- and returns a list of swaps that moves the qubits into place.
@@ -148,26 +147,6 @@ generateSwaps _ [] = []
 generateSwaps (q:qs) (t:ts)
     | q == t = generateSwaps qs ts
     | otherwise = (q, t) : generateSwaps (map (sw q t) qs) ts
-
--- |nameToMatrix is the matrix for the given named gate.
--- It returns a matrix with an identity in the top left
--- and the action in the bottom right.
-nameToMatrix :: (Floating a, QCMatrix m a) => ControlCount -> QubitCount -> String -> m (Complex a)
-nameToMatrix controlCount qubitCount name =
-    let
-        active = GatesMatrices.nameToMatrix name
-    in
-        identityPlusMatrix controlCount qubitCount active
-
--- |nameToParameterizedMatrix is the matrix for the given named parameterized gate.
--- It returns a matrix with an identity in the top left
--- and the action in the bottom right.
-nameToParameterizedMatrix :: (FromDouble a, QCMatrix m a) => Double -> ControlCount -> QubitCount -> String -> m (Complex a)
-nameToParameterizedMatrix t controlCount qubitCount name =
-    let
-        active = GatesMatrices.nameToParameterizedMatrix name t
-    in
-        identityPlusMatrix controlCount qubitCount active
 
 -- |identityPlusMatrix is the matrix composed by putting the given matrix in the bottom right,
 -- an identity in the top left and zeroes elsewhere.
