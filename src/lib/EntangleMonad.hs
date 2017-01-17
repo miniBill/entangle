@@ -8,6 +8,9 @@ import           Data.Map.Lazy       (Map)
 import qualified Data.Map.Lazy       as DM
 import           Data.Maybe
 import           Data.Monoid
+import Data.Foldable hiding (foldr,concatMap)
+import Control.Applicative
+
 --import           Debug.Trace
 
 import           Quipper

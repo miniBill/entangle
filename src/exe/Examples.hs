@@ -452,7 +452,19 @@ branchCirc (qa, qb) = do
        else qnot_at qa
     exitOn bool
 
-{- branchCircBoth :: (Qubit, Qubit) -> Circ (Qubit, Qubit, Bool)
+qkdCirc :: (Qubit, Qubit) -> Circ RecAction
+qkdCirc (qa, qb) = do
+    hadamard_at qa
+    m <- measure qb
+    bool <- dynamic_lift m
+    if bool
+       then gate_X_at qa
+       else gate_Z_at qa
+    m1 <- measure qa
+    exitOn bool
+
+
+{-branchCircBoth :: (Qubit, Qubit) -> Circ (Qubit, Qubit, Bool)
 branchCircBoth (qa, qb) = do
     hadamard_at qa
     m <- measure qb
