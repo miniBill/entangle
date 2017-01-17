@@ -61,7 +61,7 @@ instance (Floating a, Show a) => Show (SymbolicMatrix a) where
             rows = intercalate "; " $ map showRow [1..r]
         in
             "[" ++ rows ++ "]"
-    show (Kronecker a b) = "kron (" ++ show a ++ ", " ++ show b ++ ")"
+    show (Kronecker a b) = "kron(" ++ show a ++ ", " ++ show b ++ ")"
     show m@(Multiply _ _)  =
         let
             (ExplodedMatrix r c f) = eval m
