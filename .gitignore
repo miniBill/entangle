@@ -5,6 +5,7 @@ dist
 *.dyn_o
 
 src/Main
+src/doc
 .stack-work
 .DS_Store
 .cabal-sandbox
