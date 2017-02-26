@@ -4,7 +4,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module MatrixExtra (
-    kronDecompose2
     ) where
 
 import           Data.List
@@ -55,36 +54,3 @@ instance Show a => ToQpmc (Matrix a) where
             inner = intercalate ";" $ map sl $ toLists mat
         in
             "[" ++ inner ++ "]"
-
--- ⎛⎜⎝⎞⎟⎠
---             ⎛a c⎞   ⎛p⎞
--- ⎛a⎞   ⎛c⎞   ⎜a d⎟   ⎜q⎟
--- ⎜ ⎟ x ⎜ ⎟ = ⎜   ⎟ = ⎜ ⎟
--- ⎝b⎠   ⎝d⎠   ⎜b c⎟   ⎜r⎟
---             ⎝b d⎠   ⎝s⎠
--- ac = p
--- ad = q
--- bc = r
--- bd = s
--- |a|² + |b|² = 1
--- |c|² + |d|² = 2
-
--- a = 0 => |b| = 1
--- bc bd = r s
-
-kronDecompose2 :: (Eq a, Num a) => Matrix a -> Either String (Matrix a, Matrix a)
-kronDecompose2 m
-    | ncols m /= 1 = Left "kronDecompose2 only supports vectors"
-    | nrows m /= 4 = Left "kronDecompose2 only supports vectors with 4 elements for now"
-    | otherwise =
-        let
-            p = m ! (1, 1)
-            q = m ! (2, 1)
-            r = m ! (3, 1)
-            s = m ! (4, 1)
-        in
-            if p == 0 || q == 0 || r == 0 || s == 0
-                then
-                    Left "Ambiguous"
-                else
-                    Right (undefined, undefined)

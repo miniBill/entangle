@@ -2,14 +2,14 @@
 
 module EntangleMonad where
 
+import           Control.Applicative
 import           Control.Monad
+import           Data.Foldable       hiding (concatMap, foldr)
 import           Data.List
 import           Data.Map.Lazy       (Map)
 import qualified Data.Map.Lazy       as DM
 import           Data.Maybe
 import           Data.Monoid
-import Data.Foldable hiding (foldr,concatMap)
-import Control.Applicative
 
 --import           Debug.Trace
 
@@ -149,7 +149,7 @@ mytransformer g = error $ "Gate \"" ++ show g ++ "\" is not supported yet"
 transformQInit :: Bool -> EntangleMonad QubitId
 transformQInit v =
     let
-        new = undefined
+        new = error "transformQInit not yet finished"
         res bs ms = QInitNode v new $ LeafNode (bs, ms, new)
     in
         EntangleMonad res

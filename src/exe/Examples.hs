@@ -492,3 +492,7 @@ interfCirc (qa, qb) = do
   boola <- dynamic_lift ma
   boolb <- dynamic_lift mb
   exitOn $ boola == boolb
+
+qinitCirc :: () -> Circ Qubit
+qinitCirc () =
+    qinit True

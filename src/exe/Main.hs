@@ -54,7 +54,8 @@ main = fullOut
   --nonrecursive strange
   --nonrecursive mycirc
   --nonrecursive test_if
+  nonrecursive qinitCirc
   --recursive recCirc'
   --recursive branchCirc
   --recursive interfCirc
-  recursive groverRec
+  --recursive groverRec

@@ -10,6 +10,10 @@ class QTuple a where
     tupleSize :: a -> Int
     tupleFromList :: [Qubit] -> a
 
+instance QTuple () where
+    tupleSize _ = 0
+    tupleFromList = const ()
+
 instance QTuple Qubit where
     tupleSize _ = 1
     tupleFromList (q1:_) = q1
