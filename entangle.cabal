@@ -12,7 +12,7 @@ library
     hs-source-dirs:  src/lib
     exposed-modules: Complex, Expr, QMatrix, Qpmc, QTuple, Transitions, SymbolicMatrix, EntangleMonad, BitQubitId, GatesMatrices, MatrixExtra
     build-depends:   base >= 4.0 && <5.0, quipper-core >=0.7 && <0.9, containers >= 0.5&& <0.6, matrix >=0.3 && <0.5, mtl >=2.1 && <2.3
-    ghc-options:     -Wall -fno-warn-type-defaults
+    ghc-options:     -Werror -Wall -fno-warn-type-defaults -fno-warn-unused-imports
  -- ghc-options:     -Werror -fno-warn-unused-do-bind -fno-warn-orphans -fprof-auto -fprof-cafs
 
  
@@ -23,4 +23,4 @@ executable entangle
     hs-source-dirs: src/exe
     other-modules:  Examples
  -- ghc-options:    -Werror -fno-warn-type-defaults -fno-warn-orphans -fprof-auto -fprof-cafs
-    ghc-options:    -Wall -fno-warn-unused-do-bind
+    ghc-options:    -Werror -Wall -fno-warn-unused-do-bind -fno-warn-unused-imports

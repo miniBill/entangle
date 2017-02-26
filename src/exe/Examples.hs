@@ -460,7 +460,7 @@ qkdCirc (qa, qb) = do
     if bool
        then gate_X_at qa
        else gate_Z_at qa
-    m1 <- measure qa
+    _ <- measure qa
     exitOn bool
 
 

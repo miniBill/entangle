@@ -82,6 +82,8 @@ treeToTransitions final t = go (StateName 0 []) t where
         tr = Transition (Just mat) state'
         mat = gateToMatrixParameterized qubit_max name k qs cts
         state' = StateName (succ i) bs
+    --go sn@(StateName i bs) (QInitNode v qi c) = undefined
+    go (StateName _ _) QInitNode{} = error "treeToTransitions for QInitNode"
     go sn@(StateName i bs) (MeasureNode qi _ l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
         lmat = between (pred qi) (QMatrix.measure UL) (qubit_max - qi)
         ls = StateName (succ i) (bs ++ [False])
@@ -96,6 +98,7 @@ treeToTransitions final t = go (StateName 0 []) t where
 getWires :: Show a => CircTree a -> [QubitId]
 getWires (LeafNode _)                        = []
 getWires (GateNode _ qs cs c)                = qs ++ cs ++ getWires c
+getWires (QInitNode _ q c)                   = q : getWires c
 getWires (ParameterizedGateNode _ _ qs cs c) = qs ++ cs ++ getWires c
 getWires (MeasureNode q _ l r)               = q : getWires l ++ getWires r
 
@@ -122,6 +125,7 @@ gateToMatrixParameterized size name t qs cs =
         gateToMatrix size qs cs active
 
 -- |gateToMatrix takes the total number of qubits, an active matrix and returns the matrix needed to represent the full gate.
+gateToMatrix :: QMatrix m a => QubitCount -> [QubitId] -> [QubitId] -> m a -> m a
 gateToMatrix size qs cs active =
     let
         wires = cs ++ qs

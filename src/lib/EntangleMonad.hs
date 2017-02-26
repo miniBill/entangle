@@ -45,6 +45,7 @@ data CircTree a
     = GateNode String [QubitId] [QubitId] (CircTree a) -- ^ name, affected qubits, controls, child
     | ParameterizedGateNode String Double [QubitId] [QubitId] (CircTree a) -- ^ name, parameter, affected qubits, controls, child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
+    | QInitNode Bool QubitId (CircTree a)
     | LeafNode a
 
 instance Functor CircTree where
@@ -60,19 +61,23 @@ instance Monad CircTree where
     (ParameterizedGateNode n p qs cs t) >>= f = ParameterizedGateNode n p qs cs (t >>= f)
     (MeasureNode q b l r) >>= f = MeasureNode q b (l >>= f) (r >>= f)
     (LeafNode x) >>= f = f x
+    (QInitNode v q t) >>= f = QInitNode v q (t >>= f)
 
 instance Foldable CircTree where
     foldMap f (GateNode _ _ _ t)                = foldMap f t
     foldMap f (ParameterizedGateNode _ _ _ _ t) = foldMap f t
     foldMap f (MeasureNode _ _ l r)             = foldMap f l <> foldMap f r
     foldMap f (LeafNode x)                      = f x
+    foldMap f (QInitNode _ _ t)                 = foldMap f t
 
 instance Show a => Show (CircTree a) where
     show = showTree 0 show' child where
         child (GateNode _ _ _ c)                = [c]
         child (ParameterizedGateNode _ _ _ _ c) = [c]
         child (MeasureNode _ _ l r)             = [l, r]
+        child (QInitNode _ _ c)                 = [c]
         child (LeafNode _)                      = []
+
         show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
             qubits   = intercalate ", " $ map show qs
             controls = intercalate ", " $ map show cs
@@ -80,6 +85,7 @@ instance Show a => Show (CircTree a) where
             qubits   = intercalate ", " $ map show qs
             controls = intercalate ", " $ map show cs
         show' (MeasureNode q b _ _) = "MeasureNode on " ++ show q ++ " producing " ++ show b
+        show' (QInitNode v q _) = "QInitNode on " ++ show q ++ " with value " ++ show v
         show' (LeafNode x) = "LeafNode of " ++ show x
 
 showTree :: Int -> (a -> String) -> (a -> [a]) -> a -> String
@@ -137,7 +143,16 @@ mytransformer (T_QRot name _ _ _ t _ f) = f g where
         return (wires, g_controls, controls)
 mytransformer (T_QMeas f) = f transformMeasure
 mytransformer (T_DTerm _ f) = f (const $ return ())
+mytransformer (T_QInit v _ f) = f $ transformQInit v
 mytransformer g = error $ "Gate \"" ++ show g ++ "\" is not supported yet"
+
+transformQInit :: Bool -> EntangleMonad QubitId
+transformQInit v =
+    let
+        new = undefined
+        res bs ms = QInitNode v new $ LeafNode (bs, ms, new)
+    in
+        EntangleMonad res
 
 assumeQubit :: B_Endpoint QubitId BitId -> QubitId
 assumeQubit (Endpoint_Qubit qi) = qi

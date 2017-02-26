@@ -32,14 +32,16 @@ data SymbolicMatrix a
     | Kronecker (SymbolicMatrix a) (SymbolicMatrix a)
 
 instance Show (StandardMatrix a) where
-    show (Identity i) = "identity(" ++ show i ++ ")"
-    show Hadamard     = "Hadamard"
-    show PauliX       = "PauliX"
-    show PauliZ       = "PauliZ"
+    show (Identity i)   = "identity(" ++ show i ++ ")"
+    show Hadamard       = "Hadamard"
+    show PauliX         = "PauliX"
+    show PauliZ         = "PauliZ"
     --show ControlNot     = "CNOT"
-    show Swap         = "Swap"
-    show (Measure UL) = "M0"
-    show (Measure BR) = "M1"
+    show Swap           = "Swap"
+    show (Measure UL)   = "M0"
+    show (Measure BR)   = "M1"
+    show (PhaseShift _) =
+        error "PhaseShift is a complex matrix, so it gets a specialized Show instance"
 
 instance Show a => Show (StandardMatrix (Complex a)) where
     show (Identity i)   = "identity(" ++ show i ++ ")"
@@ -172,17 +174,17 @@ eval (StandardMatrix m) = eval' m where
     eval' PauliZ       = pauliZ
     eval' Swap         = swap
     eval' (Measure k)  = measure k
+    eval' (PhaseShift _) = error "PhaseShift can't be eval'ed in a non-complex environment"
 
 evalC :: QCMatrix m a => SymbolicMatrix (Complex a) -> m (Complex a)
-evalC (Zero r c) = zero r c
-evalC (Matrix r c f) = matrix r c f
-evalC (Kronecker a b) = kronecker (evalC a) (evalC b)
-evalC (Multiply a b) = evalC a * evalC b
+evalC (Zero r c)                      = zero r c
+evalC (Matrix r c f)                  = matrix r c f
+evalC (Kronecker a b)                 = kronecker (evalC a) (evalC b)
+evalC (Multiply a b)                  = evalC a * evalC b
 evalC (StandardMatrix (PhaseShift d)) = phaseShift d
-evalC (StandardMatrix m) = evalC' m where
-    evalC' (Identity i) = identity i
-    evalC' Hadamard     = hadamard
-    evalC' PauliX       = pauliX
-    evalC' PauliZ       = pauliZ
-    evalC' Swap         = swap
-    evalC' (Measure k)  = measure k
+evalC (StandardMatrix (Identity i))   = identity i
+evalC (StandardMatrix Hadamard)       = hadamard
+evalC (StandardMatrix PauliX)         = pauliX
+evalC (StandardMatrix PauliZ)         = pauliZ
+evalC (StandardMatrix Swap)           = swap
+evalC (StandardMatrix (Measure k))    = measure k
