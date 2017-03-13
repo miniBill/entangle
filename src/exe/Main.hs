@@ -1,12 +1,15 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 
 module Main where
 
+import           Data.Aeson.Types
+import           Data.Matrix                 (Matrix)
+import           Network.Wai.Middleware.Cors
 import           Quipper
-
-import           Data.Matrix    (Matrix)
+import           Web.Scotty
 
 import           Complex
 import           Examples
@@ -43,18 +46,39 @@ symbolic = error "proxy"
 numeric :: Matrix a
 numeric = error "proxy"
 
-main :: IO ()
-main = fullOut
-  symbolic
-  --numeric
+-- main :: IO ()
+-- main = fullOut
+--   symbolic
+--   --numeric
 
-  --nonrecursive grover_naive
-  --nonrecursive test_matrix_3
-  --nonrecursive test_matrix_3
-  --nonrecursive strange
-  --nonrecursive mycirc
-  --nonrecursive test_if
-  --recursive recCirc'
-  --recursive branchCirc
-  --recursive interfCirc
-  recursive groverRec
+--   --nonrecursive grover_naive
+--   --nonrecursive test_matrix_3
+--   --nonrecursive test_matrix_3
+--   --nonrecursive strange
+--   --nonrecursive mycirc
+--   --nonrecursive test_if
+--   --recursive recCirc'
+--   --recursive branchCirc
+--   --recursive interfCirc
+--   recursive groverRec
+
+data Data = Data { code :: String }
+
+instance FromJSON Data where
+  parseJSON (Object v) =
+    Data <$>       v .: "code"
+  parseJSON invalid =typeMismatch "Data" invalid
+
+instance ToJSON Data where
+  toJSON (Data code) = object ["code" .= code]
+
+root :: ActionM ()
+root = (do
+  d <- jsonData :: ActionM Data
+  json d) `rescue` text
+
+main :: IO ()
+main = scotty 3000 $ do
+  middleware simpleCors
+  get "/" $ text "Welcome to entangle!"
+  post "/" root

@@ -18,7 +18,7 @@ library
  
 executable entangle
     main-is:        Main.hs
-    build-depends:  base >= 4.0 && <5.0, entangle, quipper-core >=0.7 && <0.9, matrix
+    build-depends:  base >= 4.0 && <5.0, entangle, quipper-core >=0.7 && <0.9, matrix, hint >=0.6 && <0.7, scotty >=0.11 && <0.12, aeson >=0.11 && <0.12, wai-cors >=0.2 && <0.3
     buildable:      True
     hs-source-dirs: src/exe
     other-modules:  Examples
