@@ -78,7 +78,7 @@ root = (do
   json d) `rescue` text
 
 main :: IO ()
-main = scotty 3000 $ do
+main = scotty 3113 $ do
   middleware simpleCors
   get "/" $ text "Welcome to entangle!"
   post "/" root
