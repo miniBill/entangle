@@ -6,9 +6,13 @@
 module Main where
 
 import           Data.Aeson.Types
-import           Data.Matrix                 (Matrix)
+import           Data.List
+import           Data.Matrix                  (Matrix)
 import           Data.Monoid
-import           Data.Text.Lazy.Encoding     (decodeUtf8)
+import           Data.Text.Lazy               (pack, unpack)
+import           Data.Text.Lazy.Encoding      (decodeUtf8)
+import           Data.Typeable
+import           Language.Haskell.Interpreter hiding (get)
 import           Network.Wai.Middleware.Cors
 import           Quipper
 import           Web.Scotty
@@ -75,10 +79,30 @@ instance ToJSON Response where
 
   toEncoding (Response qpmc nodes tree) = pairs ("qpmc" .= qpmc <> "nodes" .= nodes <> "tree" .= tree)
 
+errorString :: InterpreterError -> String
+errorString (WontCompile es) = intercalate "\n" (header : map unbox es)
+  where
+    header = "ERROR: Won't compile:"
+    unbox (GhcError e) = e
+errorString e = show e
+
+useHint :: Typeable a => String -> a -> IO (Either String a)
+useHint input e =
+  let
+    interpreter = interpret input e
+    result = runInterpreter $ do
+      setImports ["Prelude", "Quipper"]
+      interpreter
+  in
+    either (Left . errorString) Right <$> result
+
 root :: ActionM ()
 root = (do
-  code <- decodeUtf8 <$> body
-  json $ Response "qpmc" "nodes" "tree" ) `rescue` text
+  code <- (Data.Text.Lazy.unpack . decodeUtf8) <$> body
+  maybeCirc <- liftAndCatchIO $ useHint code (as :: Qubit -> Circ (Qubit, Qubit))
+  let tree = either id (show . circToTree) maybeCirc
+  --fullOut symbolic (recursive || nonrecursive) circ
+  json $ Response "qpmc" code tree ) `rescue` text
 
 corsResourcePolicy :: CorsResourcePolicy
 corsResourcePolicy = CorsResourcePolicy

@@ -66,7 +66,7 @@ init =
           , tree = ""
           , debounceState = Debounce.init
           }
-        , Cmd.none
+        , transformCmd quipper
         )
 
 
@@ -189,10 +189,7 @@ transformCmd quipper =
             "http://localhost:3113"
 
         body =
-            Http.jsonBody <|
-                Encode.object
-                    [ ( "code", Encode.string quipper )
-                    ]
+            Http.stringBody "text/plain" quipper
 
         decoder =
             Decode.map3
