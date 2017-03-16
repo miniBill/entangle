@@ -7,6 +7,8 @@ module Main where
 
 import           Data.Aeson.Types
 import           Data.Matrix                 (Matrix)
+import           Data.Monoid
+import           Data.Text.Lazy.Encoding     (decodeUtf8)
 import           Network.Wai.Middleware.Cors
 import           Quipper
 import           Web.Scotty
@@ -62,23 +64,36 @@ numeric = error "proxy"
 --   --recursive interfCirc
 --   recursive groverRec
 
-data Data = Data { code :: String }
+data Response = Response {
+  qpmc  :: String,
+  nodes :: String,
+  tree  :: String
+}
 
-instance FromJSON Data where
-  parseJSON (Object v) =
-    Data <$>       v .: "code"
-  parseJSON invalid =typeMismatch "Data" invalid
+instance ToJSON Response where
+  toJSON (Response qpmc nodes tree) = object ["qpmc" .= qpmc, "nodes" .= nodes, "tree" .= tree]
 
-instance ToJSON Data where
-  toJSON (Data code) = object ["code" .= code]
+  toEncoding (Response qpmc nodes tree) = pairs ("qpmc" .= qpmc <> "nodes" .= nodes <> "tree" .= tree)
 
 root :: ActionM ()
 root = (do
-  d <- jsonData :: ActionM Data
-  json d) `rescue` text
+  code <- decodeUtf8 <$> body
+  json $ Response "qpmc" "nodes" "tree" ) `rescue` text
+
+corsResourcePolicy :: CorsResourcePolicy
+corsResourcePolicy = CorsResourcePolicy
+    { corsOrigins = Nothing
+    , corsMethods = ["GET", "POST", "OPTIONS"]
+    , corsRequestHeaders = ["content-type"]
+    , corsExposedHeaders = Nothing
+    , corsMaxAge = Nothing
+    , corsVaryOrigin = False
+    , corsRequireOrigin = False
+    , corsIgnoreFailures = False
+    }
 
 main :: IO ()
 main = scotty 3113 $ do
-  middleware simpleCors
+  middleware $ cors (const $ Just corsResourcePolicy)
   get "/" $ text "Welcome to entangle!"
   post "/" root
