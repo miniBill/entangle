@@ -99,7 +99,7 @@ useHint input e =
 root :: ActionM ()
 root = (do
   code <- (Data.Text.Lazy.unpack . decodeUtf8) <$> body
-  maybeCirc <- liftAndCatchIO $ useHint code (as :: Qubit -> Circ (Qubit, Qubit))
+  maybeCirc <- liftAndCatchIO $ useHint code (as :: Qubit -> Circ Qubit)
   let tree = either id (show . circToTree) maybeCirc
   --fullOut symbolic (recursive || nonrecursive) circ
   json $ Response "qpmc" code tree ) `rescue` text
@@ -117,7 +117,12 @@ corsResourcePolicy = CorsResourcePolicy
     }
 
 main :: IO ()
-main = scotty 3113 $ do
+main = scotty 3113 handler
+
+dev h = scottyApp handler >>= h
+
+handler :: ScottyM ()
+handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
   get "/" $ text "Welcome to entangle!"
   post "/" root

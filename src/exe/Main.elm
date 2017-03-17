@@ -54,10 +54,7 @@ init =
     let
         quipper =
             String.join "\n"
-                [ "example :: Qubit -> (Qubit, Qubit)"
-                , "example qa = do"
-                , "  qb <- qinit False"
-                , "  return (qa, qb)"
+                [ "(\\q -> hadamard q)"
                 ]
     in
         ( { quipper = quipper
