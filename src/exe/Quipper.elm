@@ -53,26 +53,27 @@ config getState updateState msg result =
 
 update : Config model msg -> Msg -> model -> ( model, Cmd msg )
 update (Config getter setter lift result) msg model =
-    case msg of
-        Code code ->
-            let
-                qmodel =
-                    getter model
+    let
+        qmodel =
+            getter model
+    in
+        case msg of
+            Code code ->
+                let
+                    cmd =
+                        Cmd.map lift <| debCmd (Transform code)
+                in
+                    ( setter model { qmodel | code = code }, cmd )
 
-                cmd =
-                    Cmd.map lift <| debCmd (Transform code)
-            in
-                ( setter model { qmodel | code = code }, cmd )
+            Deb a ->
+                let
+                    ( qmodel_, cmd ) =
+                        Debounce.update debounceCfg a qmodel
+                in
+                    ( setter model qmodel_, Cmd.map lift cmd )
 
-        Deb a ->
-            let
-                ( model_, cmd ) =
-                    Debounce.update debounceCfg a model
-            in
-                ( model_, Cmd.map lift cmd )
-
-        Transform quipperState ->
-            ( model, Cmd.map result <| transformCmd quipperState )
+            Transform quipperState ->
+                ( model, Cmd.map result <| transformCmd quipperState )
 
 
 transformCmd : String -> Cmd (Result Http.Error Response)
