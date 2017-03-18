@@ -8,11 +8,11 @@ module Main where
 import           Data.Aeson.Types
 import           Data.List
 import           Data.Matrix                  (Matrix)
-import           Data.Monoid
-import           Data.Text.Lazy               (pack, unpack)
+import           Data.Monoid                  ((<>))
+import           Data.Text.Lazy               (unpack)
 import           Data.Text.Lazy.Encoding      (decodeUtf8)
-import           Data.Typeable
 import           Language.Haskell.Interpreter hiding (get)
+import           Network.Wai                  hiding (Response)
 import           Network.Wai.Middleware.Cors
 import           Quipper
 import           Web.Scotty
@@ -23,7 +23,7 @@ import           Expr
 import           QMatrix
 import           Qpmc
 import           QTuple
-import           SymbolicMatrix
+import           SymbolicMatrix               hiding (eval)
 import           Transitions
 
 -- |fullOut takes a function returning a value in the 'Circ' monad,
@@ -69,40 +69,41 @@ numeric = error "proxy"
 --   recursive groverRec
 
 data Response = Response {
-  qpmc  :: String,
-  nodes :: String,
-  tree  :: String
+  rQpmc  :: String,
+  rNodes :: String,
+  rTree  :: String
 }
 
 instance ToJSON Response where
-  toJSON (Response qpmc nodes tree) = object ["qpmc" .= qpmc, "nodes" .= nodes, "tree" .= tree]
+  toJSON (Response qpmc nodes tree) =
+    object ["qpmc" .= qpmc, "nodes" .= nodes, "tree" .= tree]
 
-  toEncoding (Response qpmc nodes tree) = pairs ("qpmc" .= qpmc <> "nodes" .= nodes <> "tree" .= tree)
+  toEncoding (Response qpmc nodes tree) =
+    pairs ("qpmc" .= qpmc <> "nodes" .= nodes <> "tree" .= tree)
 
 errorString :: InterpreterError -> String
-errorString (WontCompile es) = intercalate "\n" (header : map unbox es)
-  where
-    header = "ERROR: Won't compile:"
+errorString (WontCompile es) =
+  let
     unbox (GhcError e) = e
+  in
+    intercalate "\n" ("ERROR: Won't compile:" : map unbox es)
+
 errorString e = show e
 
-useHint :: Typeable a => String -> a -> IO (Either String a)
-useHint input e =
+useHint :: String -> IO (Either String String)
+useHint input =
   let
-    interpreter = interpret input e
     result = runInterpreter $ do
-      setImports ["Prelude", "Quipper"]
-      interpreter
+      setImports ["Prelude", "Quipper", "Transitions"]
+      eval input
   in
     either (Left . errorString) Right <$> result
 
 root :: ActionM ()
 root = (do
   code <- (Data.Text.Lazy.unpack . decodeUtf8) <$> body
-  maybeCirc <- liftAndCatchIO $ useHint code (as :: Qubit -> Circ Qubit)
-  let tree = either id (show . circToTree) maybeCirc
-  --fullOut symbolic (recursive || nonrecursive) circ
-  json $ Response "qpmc" code tree ) `rescue` text
+  tree <- liftAndCatchIO $ useHint ("circToTree " ++ parens code)
+  json $ Response "qpmc" code (either id id tree) ) `rescue` text
 
 corsResourcePolicy :: CorsResourcePolicy
 corsResourcePolicy = CorsResourcePolicy
@@ -119,6 +120,7 @@ corsResourcePolicy = CorsResourcePolicy
 main :: IO ()
 main = scotty 3113 handler
 
+dev :: (Application -> IO a) -> IO a
 dev h = scottyApp handler >>= h
 
 handler :: ScottyM ()

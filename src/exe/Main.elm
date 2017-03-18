@@ -1,12 +1,9 @@
 module Main exposing (main)
 
-import Json.Encode as Encode
-import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
 import Base64
-import Debounce
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
 import Bootstrap.Form as Form
@@ -14,6 +11,7 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
+import Quipper
 
 
 main : Program Never Model Msg
@@ -27,43 +25,39 @@ main =
 
 
 type alias Model =
-    { quipper : String
+    { quipperState : Quipper.State
     , qpmc : String
-    , nodes : String
-    , tree : String
-    , debounceState : Debounce.State
-    }
-
-
-type alias Response =
-    { qpmc : String
     , nodes : String
     , tree : String
     }
 
 
 type Msg
-    = Quipper String
-    | Deb (Debounce.Msg Msg)
-    | Transform String
-    | TransformResult (Result Http.Error Response)
+    = Quipper Quipper.Msg
+    | TransformResult (Result Http.Error Quipper.Response)
+
+
+quipperCfg : Quipper.Config Model Msg
+quipperCfg =
+    Quipper.config
+        .quipperState
+        (\model s -> { model | quipperState = s })
+        Quipper
+        TransformResult
 
 
 init : ( Model, Cmd Msg )
 init =
     let
-        quipper =
-            String.join "\n"
-                [ "(\\q -> hadamard q)"
-                ]
+        ( quipperState, quipperCmd ) =
+            Quipper.init quipperCfg
     in
-        ( { quipper = quipper
+        ( { quipperState = quipperState
           , qpmc = ""
           , nodes = ""
           , tree = ""
-          , debounceState = Debounce.init
           }
-        , transformCmd quipper
+        , quipperCmd
         )
 
 
@@ -71,7 +65,7 @@ view : Model -> Html Msg
 view model =
     let
         cardList =
-            [ [ ( "Quipper", quipperView, "Main.hs", .quipper )
+            [ [ ( "Quipper", (\_ -> Quipper.view quipperCfg model), "Main.hs", .quipperState >> .code )
               , ( "QPMC", otherView, "output.qpmc", .qpmc )
               ]
             , [ ( "Nodes", otherView, "nodes.log", .nodes )
@@ -124,42 +118,6 @@ view model =
         Grid.containerFluid [] rows
 
 
-cfg : Debounce.Config Model Msg
-cfg =
-    Debounce.config
-        .debounceState
-        (\model s -> { model | debounceState = s })
-        Deb
-        200
-
-
-debCmd : Msg -> Cmd Msg
-debCmd =
-    Debounce.debounceCmd cfg
-
-
-quipperView : String -> Html Msg
-quipperView quipper =
-    Form.form []
-        [ Form.group []
-            [ Form.label
-                [ for "code" ]
-                [ text "Code" ]
-            , Textarea.textarea
-                [ Textarea.id "code"
-                , Textarea.value quipper
-                , Textarea.onInput Quipper
-                , Textarea.rows 10
-                , Textarea.attrs
-                    [ style
-                        [ ( "font-family", "Fira Code, monospace" )
-                        ]
-                    ]
-                ]
-            ]
-        ]
-
-
 otherView : String -> Html Msg
 otherView value =
     Form.form []
@@ -179,44 +137,11 @@ otherView value =
         ]
 
 
-transformCmd : String -> Cmd Msg
-transformCmd quipper =
-    let
-        url =
-            "http://localhost:3113"
-
-        body =
-            Http.stringBody "text/plain" quipper
-
-        decoder =
-            Decode.map3
-                (\qpmc nodes tree ->
-                    { qpmc = qpmc
-                    , nodes = nodes
-                    , tree = tree
-                    }
-                )
-                (Decode.field "qpmc" Decode.string)
-                (Decode.field "nodes" Decode.string)
-                (Decode.field "tree" Decode.string)
-
-        request =
-            Http.post url body decoder
-    in
-        Http.send TransformResult request
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Quipper quipper ->
-            ( { model | quipper = quipper }, debCmd (Transform quipper) )
-
-        Deb a ->
-            Debounce.update cfg a model
-
-        Transform quipper ->
-            ( model, transformCmd quipper )
+        Quipper q ->
+            Quipper.update quipperCfg q model
 
         TransformResult r ->
             let
