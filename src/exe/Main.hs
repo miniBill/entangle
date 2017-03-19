@@ -7,66 +7,21 @@ module Main where
 
 import           Data.Aeson.Types
 import           Data.List
-import           Data.Matrix                  (Matrix)
 import           Data.Monoid                  ((<>))
-import           Data.Text.Lazy               (unpack)
-import           Data.Text.Lazy.Encoding      (decodeUtf8)
 import           Language.Haskell.Interpreter hiding (get)
-import           Network.Wai                  hiding (Response)
+import           Network.Wai                  hiding (Request, Response)
 import           Network.Wai.Middleware.Cors
-import           Quipper
 import           Web.Scotty
 
-import           Complex
-import           Examples
-import           Expr
-import           QMatrix
-import           Qpmc
-import           QTuple
-import           SymbolicMatrix               hiding (eval)
-import           Transitions
+data Request = Request {
+  rCode      :: String,
+  rRecursive :: Bool
+}
 
--- |fullOut takes a function returning a value in the 'Circ' monad,
--- and outputs the result of transforming it to QPMC code
---fullOut :: QTuple a => (a -> Circ b) -> IO ()
-fullOut :: (QTuple a, Show b, QCMatrix m Expr, ToQpmc (m (Complex Expr))) => m x -> (b -> [Transition m Expr]) -> (a -> Circ b) -> IO ()
-fullOut _ final c = do
-    putStr "---\n"
-    let tree = circToTree c
-    print tree
-    putStr "---\n"
-    let transitions = circMatrices final c
-    putStrLn $ toQpmc transitions
-    putStr "---\n"
-
-nonrecursive :: a -> [Transition m Expr]
-nonrecursive = const []
-
-recursive :: RecAction -> [Transition m v]
-recursive Exit = []
-recursive Loop = [Transition Nothing $ StateName 0 []]
-
-symbolic :: SymbolicMatrix a
-symbolic = error "proxy"
-
-numeric :: Matrix a
-numeric = error "proxy"
-
--- main :: IO ()
--- main = fullOut
---   symbolic
---   --numeric
-
---   --nonrecursive grover_naive
---   --nonrecursive test_matrix_3
---   --nonrecursive test_matrix_3
---   --nonrecursive strange
---   --nonrecursive mycirc
---   --nonrecursive test_if
---   --recursive recCirc'
---   --recursive branchCirc
---   --recursive interfCirc
---   recursive groverRec
+instance FromJSON Request where
+  parseJSON =  withObject "Request" $ \v -> Request
+    <$> v .: "code"
+    <*> v .: "recursive"
 
 data Response = Response {
   rQpmc  :: String,
@@ -87,23 +42,24 @@ errorString (WontCompile es) =
     unbox (GhcError e) = e
   in
     intercalate "\n" ("ERROR: Won't compile:" : map unbox es)
-
 errorString e = show e
 
-useHint :: String -> IO (Either String String)
+useHint :: String -> ActionM String
 useHint input =
   let
     result = runInterpreter $ do
-      setImports ["Prelude", "Quipper", "Transitions"]
-      eval input
+      setImports ["Prelude", "Quipper", "Transitions", "Qpmc", "Expr", "SymbolicMatrix"]
+      interpret input ""
   in
-    either (Left . errorString) Right <$> result
+    liftAndCatchIO $ either errorString id <$> result
 
 root :: ActionM ()
-root = (do
-  code <- (Data.Text.Lazy.unpack . decodeUtf8) <$> body
-  tree <- liftAndCatchIO $ useHint ("circToTree " ++ parens code)
-  json $ Response "qpmc" code (either id id tree) ) `rescue` text
+root = do
+  request <- jsonData :: ActionM Request
+  tree <- useHint $ "show $ circToTree " ++ parens (rCode request)
+  let final = if rRecursive request then "recursive" else "nonrecursive"
+  qpmc <- useHint $ "toQpmc (circMatrices " ++ final ++ " " ++ parens (rCode request) ++ " :: [Transitions SymbolicMatrix Expr])"
+  json $ Response qpmc "nodes" tree
 
 corsResourcePolicy :: CorsResourcePolicy
 corsResourcePolicy = CorsResourcePolicy
@@ -127,4 +83,4 @@ handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
   get "/" $ text "Welcome to entangle!"
-  post "/" root
+  post "/" $ root `rescue` text

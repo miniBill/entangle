@@ -10,7 +10,10 @@ import Bootstrap.Form as Form
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
-import Bootstrap.Grid.Row as Row
+
+
+--import Bootstrap.Grid.Row as Row
+
 import Quipper
 
 
@@ -116,7 +119,7 @@ view model =
                     , attribute "download" filename
                     ]
                 ]
-                [ text "Download!" ]
+                [ text "Download" ]
     in
         Grid.containerFluid []
             [ Grid.row

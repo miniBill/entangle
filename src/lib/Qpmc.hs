@@ -7,13 +7,36 @@ module Qpmc where
 import           Data.Char
 import           Data.Function
 import           Data.List
+import           Data.Matrix    (Matrix)
 import           Data.Maybe
 
 import           Complex
+import           Expr
+import           QMatrix
+import           SymbolicMatrix hiding (eval)
 import           Transitions
+
+
+data RecAction = Loop | Exit deriving Show
+
+nonrecursive :: a -> [Transition m Expr]
+nonrecursive = const []
+
+recursive :: RecAction -> [Transition m v]
+recursive Exit = []
+recursive Loop = [Transition Nothing $ StateName 0 []]
+
+symbolic :: SymbolicMatrix a
+symbolic = error "proxy"
+
+numeric :: Matrix a
+numeric = error "proxy"
 
 class ToQpmc a where
     toQpmc :: a -> String
+
+instance (Floating a, Show a) => ToQpmc (SymbolicMatrix a) where
+    toQpmc = show
 
 instance ToQpmc (m (Complex a)) => ToQpmc [Transitions m a] where
     toQpmc ts = "qmc\n"

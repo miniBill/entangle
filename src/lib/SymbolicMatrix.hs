@@ -12,7 +12,6 @@ import           Data.List
 
 import           Complex
 import           QMatrix
-import           Qpmc
 
 data StandardMatrix a where
     Identity :: Integer -> StandardMatrix a
@@ -156,9 +155,6 @@ liftEvalE rf cf vf xa@(ExplodedMatrix ra ca _) xb@(ExplodedMatrix rb cb _) =
 
 instance (Floating a, Fractional a) => QCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift t
-
-instance (Floating a, Show a) => ToQpmc (SymbolicMatrix a) where
-    toQpmc = show
 
 eval :: (Floating a, QMatrix m a) => SymbolicMatrix a -> m a
 eval (Zero r c) = zero r c

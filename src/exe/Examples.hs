@@ -1,8 +1,7 @@
 module Examples where
 
+import           Qpmc
 import           Quipper
-
-data RecAction = Loop | Exit deriving Show
 
 exitOn :: Bool -> Circ RecAction
 exitOn True  = return Exit

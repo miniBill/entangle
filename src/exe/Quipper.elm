@@ -1,6 +1,7 @@
 module Quipper exposing (Config, State, Msg, Response, init, config, code, update, view)
 
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
@@ -34,7 +35,7 @@ type Msg
     | Input Int
     | Output Output
     | Deb (Debounce.Msg Msg)
-    | Transform String
+    | Transform
 
 
 type alias Response =
@@ -76,7 +77,7 @@ update (Config getter setter lift result) msg model =
         trans qmodel_ =
             let
                 cmd =
-                    Cmd.map lift <| debCmd (Transform qmodel_.code)
+                    Cmd.map lift <| debCmd Transform
             in
                 ( setter model qmodel_, cmd )
     in
@@ -100,22 +101,26 @@ update (Config getter setter lift result) msg model =
                 in
                     ( setter model qmodel_, Cmd.map lift cmd )
 
-            Transform quipperState ->
-                ( model, Cmd.map result <| transformCmd quipperState )
+            Transform ->
+                ( model, Cmd.map result <| transformCmd qmodel )
 
 
-transformCmd : String -> Cmd (Result Http.Error Response)
-transformCmd quipper =
+transformCmd : State -> Cmd (Result Http.Error Response)
+transformCmd model =
     let
         url =
             "http://localhost:3113"
 
         code =
-            ("\\q -> (do; " ++ quipper ++ ")")
+            ("\\q -> (do; " ++ model.code ++ ")")
                 |> Regex.replace Regex.All (Regex.regex "\n") (always "; ")
 
         body =
-            Http.stringBody "text/plain" code
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "code", Encode.string code )
+                    , ( "recursive", Encode.bool <| isRecursive model.output )
+                    ]
 
         decoder =
             Decode.map3
@@ -153,7 +158,7 @@ init (Config _ _ _ result) =
             }
     in
         ( state
-        , Cmd.map result <| transformCmd quipperCode
+        , Cmd.map result <| transformCmd state
         )
 
 
@@ -261,17 +266,21 @@ inputRow model =
         ]
 
 
+isRecursive : Output -> Bool
+isRecursive output =
+    case output of
+        Recursive ->
+            True
+
+        Qubits _ ->
+            False
+
+
 recursiveRow : State -> Html Msg
 recursiveRow model =
     Checkbox.checkbox
-        [ Checkbox.checked
-            (case model.output of
-                Recursive ->
-                    True
-
-                Qubits _ ->
-                    False
-            )
+        [ Checkbox.checked <|
+            isRecursive model.output
         , Checkbox.onCheck
             (\c ->
                 Output <|
