@@ -4,19 +4,33 @@ import Json.Decode as Decode
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Http
+import Regex
+import Bootstrap.Grid.Col as Col
 import Bootstrap.Form as Form
 import Bootstrap.Form.Textarea as Textarea
+import Bootstrap.Form.Input as Input
 import Debounce
 
 
 type alias State =
-    { code : String
+    { functionName : String
+    , inputArity : Int
+    , output : OutputArity
+    , code : String
     , debounceState : Debounce.State
     }
 
 
+type OutputArity
+    = OutputRecursive
+    | OutputArity Int
+
+
 type Msg
     = Code String
+    | FunctionName String
+    | Input Int
+    | Output OutputArity
     | Deb (Debounce.Msg Msg)
     | Transform String
 
@@ -56,14 +70,26 @@ update (Config getter setter lift result) msg model =
     let
         qmodel =
             getter model
+
+        trans qmodel_ =
+            let
+                cmd =
+                    Cmd.map lift <| debCmd (Transform qmodel_.code)
+            in
+                ( setter model qmodel_, cmd )
     in
         case msg of
             Code code ->
-                let
-                    cmd =
-                        Cmd.map lift <| debCmd (Transform code)
-                in
-                    ( setter model { qmodel | code = code }, cmd )
+                trans ({ qmodel | code = code })
+
+            FunctionName _ ->
+                trans qmodel
+
+            Input _ ->
+                trans qmodel
+
+            Output _ ->
+                trans qmodel
 
             Deb a ->
                 let
@@ -82,8 +108,12 @@ transformCmd quipper =
         url =
             "http://localhost:3113"
 
+        code =
+            ("\\q -> (do; " ++ quipper ++ ")")
+                |> Regex.replace Regex.All (Regex.regex "\n") (always "; ")
+
         body =
-            Http.stringBody "text/plain" quipper
+            Http.stringBody "text/plain" code
 
         decoder =
             Decode.map3
@@ -108,13 +138,15 @@ init (Config _ _ _ result) =
     let
         quipperCode =
             String.join "\n"
-                [ "\\q -> do"
-                , " hadamard_at q"
-                , " return q"
+                [ "hadamard_at q"
+                , "return q"
                 ]
 
         state =
             { code = quipperCode
+            , functionName = "f"
+            , inputArity = 1
+            , output = OutputArity 1
             , debounceState = Debounce.init
             }
     in
@@ -123,23 +155,77 @@ init (Config _ _ _ result) =
         )
 
 
+monospaced : Attribute msg
+monospaced =
+    style
+        [ ( "font-family", "Fira Code, monospace" )
+        , ( "white-space", " pre" )
+        ]
+
+
+tt : List String -> Html msg
+tt values =
+    span [ monospaced ] <|
+        List.intersperse (br [] []) <|
+            List.map text values
+
+
 view : Config model msg -> model -> Html msg
 view (Config getter _ lift _) model =
-    Form.form []
-        [ Form.group []
-            [ Form.label
-                [ for "code" ]
-                [ text "Code" ]
-            , Textarea.textarea
-                [ Textarea.id "code"
-                , Textarea.value (getter model).code
-                , Textarea.onInput (lift << Code)
-                , Textarea.rows 10
-                , Textarea.attrs
-                    [ style
-                        [ ( "font-family", "Fira Code, monospace" )
+    let
+        qmodel =
+            getter model
+
+        qtuple n =
+            case n of
+                1 ->
+                    "Qubit"
+
+                _ ->
+                    "(" ++ String.join " , " (List.repeat n "Qubit") ++ ")"
+    in
+        Form.form []
+            [ Form.row []
+                [ Form.colLabel [ Col.sm2 ] [ text "Name" ]
+                , Form.col [ Col.sm10 ]
+                    [ Input.text
+                        [ Input.value qmodel.functionName
+                        , Input.onInput (lift << FunctionName)
+                        ]
+                    ]
+                ]
+            , Form.row []
+                [ Form.colLabel [ Col.sm2 ] [ text "Body" ]
+                , Form.col [ Col.sm10 ]
+                    [ Textarea.textarea
+                        [ Textarea.value qmodel.code
+                        , Textarea.onInput (lift << Code)
+                        , Textarea.rows 10
+                        , Textarea.attrs [ monospaced ]
+                        ]
+                    ]
+                ]
+            , Form.row []
+                [ Form.colLabel [ Col.sm2 ] [ text "Code" ]
+                , Form.colLabel [ Col.sm10 ]
+                    [ tt
+                        [ let
+                            out =
+                                case qmodel.output of
+                                    OutputRecursive ->
+                                        "RecAction"
+
+                                    OutputArity n ->
+                                        qtuple n
+
+                            type_ =
+                                qtuple qmodel.inputArity ++ " -> " ++ out
+                          in
+                            qmodel.functionName ++ " :: " ++ type_
+                        , qmodel.functionName ++ " q = do"
+                        , ("  " ++ qmodel.code)
+                            |> Regex.replace Regex.All (Regex.regex "\n") (always "\n  ")
                         ]
                     ]
                 ]
             ]
-        ]
