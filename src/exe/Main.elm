@@ -65,35 +65,38 @@ view : Model -> Html Msg
 view model =
     let
         cardList =
-            [ [ ( "Quipper", (\_ -> Quipper.view quipperCfg model), "Main.hs", .quipperState >> .code )
-              , ( "QPMC", otherView, "output.qpmc", .qpmc )
-              ]
-            , [ ( "Nodes", otherView, "nodes.log", .nodes )
-              , ( "Tree", otherView, "tree.log", .tree )
-              ]
+            [ ( "Quipper"
+              , (\_ -> Quipper.view quipperCfg model)
+              , "Main.hs"
+              , .quipperState >> Quipper.code
+              , Just [ Col.md10, Col.lg8 ]
+              )
+            , ( "QPMC", otherView, "output.qpmc", .qpmc, Nothing )
+            , ( "Nodes", otherView, "nodes.log", .nodes, Nothing )
+            , ( "Tree", otherView, "tree.log", .tree, Nothing )
             ]
 
-        rows =
-            List.map viewRow cardList
+        cards =
+            cardList
+                |> List.map
+                    (\c ->
+                        Grid.col
+                            [ Col.sm12
+                            , Col.md6
+                            , Col.attrs [ class "mt-4" ]
+                            ]
+                            [ Card.view <| viewCard c ]
+                    )
 
-        viewRow cards =
-            Grid.row [ Row.attrs [ class "pt-4" ] ] <|
-                List.map viewCard cards
-
-        viewCard ( name, subview, filename, property ) =
-            Grid.col [ Col.sm6 ]
-                [ Card.config []
-                    |> Card.headerH3
-                        [ class "text-center"
-                        , class "mt-2"
-                        ]
-                        [ text name ]
-                    |> Card.block []
-                        [ Card.text [] [ subview (property model) ] ]
-                    |> Card.footer []
-                        [ downloadLink filename property ]
-                    |> Card.view
-                ]
+        viewCard ( name, subview, filename, property, width ) =
+            Card.config []
+                |> Card.headerH3
+                    [ class "text-center" ]
+                    [ text name ]
+                |> Card.block []
+                    [ Card.text [] [ subview (property model) ] ]
+                |> Card.footer []
+                    [ downloadLink filename property ]
 
         downloadLink filename property =
             Button.linkButton
@@ -115,7 +118,11 @@ view model =
                 ]
                 [ text "Download!" ]
     in
-        Grid.containerFluid [] rows
+        Grid.containerFluid []
+            [ Grid.row
+                []
+                cards
+            ]
 
 
 otherView : String -> Html Msg

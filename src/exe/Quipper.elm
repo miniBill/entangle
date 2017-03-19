@@ -1,4 +1,4 @@
-module Quipper exposing (Config, State, Msg, Response, init, config, update, view)
+module Quipper exposing (Config, State, Msg, Response, init, config, code, update, view)
 
 import Json.Decode as Decode
 import Html exposing (..)
@@ -6,31 +6,33 @@ import Html.Attributes exposing (..)
 import Http
 import Regex
 import Bootstrap.Grid.Col as Col
+import Bootstrap.Grid.Row as Row
 import Bootstrap.Form as Form
-import Bootstrap.Form.Textarea as Textarea
+import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Form.Input as Input
+import Bootstrap.Form.Textarea as Textarea
 import Debounce
 
 
 type alias State =
     { functionName : String
-    , inputArity : Int
-    , output : OutputArity
+    , input : Int
+    , output : Output
     , code : String
     , debounceState : Debounce.State
     }
 
 
-type OutputArity
-    = OutputRecursive
-    | OutputArity Int
+type Output
+    = Recursive
+    | Qubits Int
 
 
 type Msg
     = Code String
     | FunctionName String
     | Input Int
-    | Output OutputArity
+    | Output Output
     | Deb (Debounce.Msg Msg)
     | Transform String
 
@@ -80,16 +82,16 @@ update (Config getter setter lift result) msg model =
     in
         case msg of
             Code code ->
-                trans ({ qmodel | code = code })
+                trans { qmodel | code = code }
 
             FunctionName _ ->
                 trans qmodel
 
-            Input _ ->
-                trans qmodel
+            Input input ->
+                trans { qmodel | input = input }
 
-            Output _ ->
-                trans qmodel
+            Output output ->
+                trans { qmodel | output = output }
 
             Deb a ->
                 let
@@ -145,8 +147,8 @@ init (Config _ _ _ result) =
         state =
             { code = quipperCode
             , functionName = "f"
-            , inputArity = 1
-            , output = OutputArity 1
+            , input = 1
+            , output = Qubits 1
             , debounceState = Debounce.init
             }
     in
@@ -159,73 +161,157 @@ monospaced : Attribute msg
 monospaced =
     style
         [ ( "font-family", "Fira Code, monospace" )
-        , ( "white-space", " pre" )
+        , ( "white-space", "pre-wrap" )
         ]
 
 
-tt : List String -> Html msg
-tt values =
-    span [ monospaced ] <|
-        List.intersperse (br [] []) <|
-            List.map text values
+qtuple : Int -> String
+qtuple n =
+    case n of
+        1 ->
+            "Qubit"
+
+        _ ->
+            "(" ++ String.join ", " (List.repeat n "Qubit") ++ ")"
+
+
+signature : State -> String
+signature model =
+    let
+        in_ =
+            qtuple model.input
+
+        out =
+            case model.output of
+                Recursive ->
+                    "RecAction"
+
+                Qubits n ->
+                    qtuple n
+
+        type_ =
+            in_ ++ " -> Circ " ++ out
+    in
+        model.functionName ++ " :: " ++ type_
 
 
 view : Config model msg -> model -> Html msg
 view (Config getter _ lift _) model =
     let
-        qmodel =
-            getter model
-
-        qtuple n =
-            case n of
-                1 ->
-                    "Qubit"
-
-                _ ->
-                    "(" ++ String.join " , " (List.repeat n "Qubit") ++ ")"
-    in
-        Form.form []
-            [ Form.row []
-                [ Form.colLabel [ Col.sm2 ] [ text "Name" ]
-                , Form.col [ Col.sm10 ]
-                    [ Input.text
-                        [ Input.value qmodel.functionName
-                        , Input.onInput (lift << FunctionName)
-                        ]
-                    ]
-                ]
-            , Form.row []
-                [ Form.colLabel [ Col.sm2 ] [ text "Body" ]
-                , Form.col [ Col.sm10 ]
-                    [ Textarea.textarea
-                        [ Textarea.value qmodel.code
-                        , Textarea.onInput (lift << Code)
-                        , Textarea.rows 10
-                        , Textarea.attrs [ monospaced ]
-                        ]
-                    ]
-                ]
-            , Form.row []
-                [ Form.colLabel [ Col.sm2 ] [ text "Code" ]
-                , Form.colLabel [ Col.sm10 ]
-                    [ tt
-                        [ let
-                            out =
-                                case qmodel.output of
-                                    OutputRecursive ->
-                                        "RecAction"
-
-                                    OutputArity n ->
-                                        qtuple n
-
-                            type_ =
-                                qtuple qmodel.inputArity ++ " -> " ++ out
-                          in
-                            qmodel.functionName ++ " :: " ++ type_
-                        , qmodel.functionName ++ " q = do"
-                        , ("  " ++ qmodel.code)
-                            |> Regex.replace Regex.All (Regex.regex "\n") (always "\n  ")
-                        ]
-                    ]
-                ]
+        rowsHead =
+            [ ( "Name", nameRow )
+            , ( "Input qubits", inputRow )
+            , ( "Recursive", recursiveRow )
             ]
+
+        rowsMid =
+            case (getter model).output of
+                Recursive ->
+                    []
+
+                Qubits _ ->
+                    [ ( "Output qubits", outputRow ) ]
+
+        rowsTail =
+            [ ( "Body", bodyRow )
+            , ( "Code", codeRow )
+            ]
+
+        rows =
+            rowsHead ++ rowsMid ++ rowsTail
+    in
+        Form.form [] <|
+            List.map
+                (\( name, content ) ->
+                    Form.row [ Row.rightSm ]
+                        [ Form.colLabel
+                            [ Col.xs12, Col.sm2, Col.md3, Col.lg2 ]
+                            [ text name ]
+                        , Form.col
+                            [ Col.xs12, Col.sm10, Col.md9, Col.lg10 ]
+                            [ Html.map lift <| content <| getter model ]
+                        ]
+                )
+                rows
+
+
+nameRow : State -> Html Msg
+nameRow model =
+    Input.text
+        [ Input.value model.functionName
+        , Input.onInput FunctionName
+        ]
+
+
+bodyRow : State -> Html Msg
+bodyRow model =
+    Textarea.textarea
+        [ Textarea.value model.code
+        , Textarea.onInput Code
+        , Textarea.rows 10
+        , Textarea.attrs [ monospaced ]
+        ]
+
+
+inputRow : State -> Html Msg
+inputRow model =
+    Input.number
+        [ Input.onInput (Input << Result.withDefault model.input << String.toInt)
+        , Input.value <| toString model.input
+        ]
+
+
+recursiveRow : State -> Html Msg
+recursiveRow model =
+    Checkbox.checkbox
+        [ Checkbox.checked
+            (case model.output of
+                Recursive ->
+                    True
+
+                Qubits _ ->
+                    False
+            )
+        , Checkbox.onCheck
+            (\c ->
+                Output <|
+                    if c then
+                        Recursive
+                    else
+                        Qubits 0
+            )
+        ]
+        "Recursive"
+
+
+outputRow : State -> Html Msg
+outputRow model =
+    let
+        int =
+            case model.output of
+                Recursive ->
+                    0
+
+                Qubits n ->
+                    n
+    in
+        Input.number
+            [ Input.onInput (Output << Qubits << Result.withDefault int << String.toInt)
+            , Input.value <|
+                toString int
+            ]
+
+
+codeRow : State -> Html Msg
+codeRow model =
+    span [ monospaced ] [ text <| code model ]
+
+
+code : State -> String
+code model =
+    String.join "\n"
+        [ signature model
+        , model.functionName ++ " q = do"
+        , ("  " ++ model.code)
+            |> Regex.replace Regex.All (Regex.regex "\n") (always "\n  ")
+        ]
