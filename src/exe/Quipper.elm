@@ -40,7 +40,6 @@ type Msg
 
 type alias Response =
     { qpmc : String
-    , nodes : String
     , tree : String
     }
 
@@ -123,15 +122,13 @@ transformCmd model =
                     ]
 
         decoder =
-            Decode.map3
-                (\qpmc nodes tree ->
+            Decode.map2
+                (\qpmc tree ->
                     { qpmc = qpmc
-                    , nodes = nodes
                     , tree = tree
                     }
                 )
                 (Decode.field "qpmc" Decode.string)
-                (Decode.field "nodes" Decode.string)
                 (Decode.field "tree" Decode.string)
 
         request =

@@ -10,11 +10,17 @@ import Bootstrap.Form as Form
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
-
-
---import Bootstrap.Grid.Row as Row
-
 import Quipper
+import Window
+
+
+breakpoints : { sm : Int, md : Int, lg : Int, xl : Int }
+breakpoints =
+    { sm = 576
+    , md = 768
+    , lg = 992
+    , xl = 1200
+    }
 
 
 main : Program Never Model Msg
@@ -29,9 +35,8 @@ main =
 
 type alias Model =
     { quipperState : Quipper.State
-    , qpmc : String
-    , nodes : String
     , tree : String
+    , qpmc : String
     }
 
 
@@ -56,9 +61,8 @@ init =
             Quipper.init quipperCfg
     in
         ( { quipperState = quipperState
-          , qpmc = ""
-          , nodes = ""
           , tree = ""
+          , qpmc = ""
           }
         , quipperCmd
         )
@@ -67,29 +71,35 @@ init =
 view : Model -> Html Msg
 view model =
     let
-        cardList =
+        cardDescriptions =
             [ ( "Quipper"
               , (\_ -> Quipper.view quipperCfg model)
               , "Main.hs"
               , .quipperState >> Quipper.code
-              , Just [ Col.md10, Col.lg8 ]
+              , [ Col.xs12, Col.md6 ]
               )
-            , ( "QPMC", otherView, "output.qpmc", .qpmc, Nothing )
-            , ( "Nodes", otherView, "nodes.log", .nodes, Nothing )
-            , ( "Tree", otherView, "tree.log", .tree, Nothing )
+            , ( "QPMC"
+              , otherView
+              , "output.qpmc"
+              , .qpmc
+              , [ Col.xs12, Col.md12, Col.pushMd6 ]
+              )
+            , ( "Tree"
+              , otherView
+              , "tree.log"
+              , .tree
+              , [ Col.xs12, Col.md6, Col.pullMd6 ]
+              )
             ]
 
-        cards =
-            cardList
-                |> List.map
-                    (\c ->
-                        Grid.col
-                            [ Col.sm12
-                            , Col.md6
-                            , Col.attrs [ class "mt-4" ]
-                            ]
-                            [ Card.view <| viewCard c ]
-                    )
+        rows =
+            List.map
+                (\( name, subview, filename, property, width ) ->
+                    Grid.col
+                        (Col.attrs [ class "mt-4" ] :: width)
+                        [ Card.view <| viewCard ( name, subview, filename, property, width ) ]
+                )
+                cardDescriptions
 
         viewCard ( name, subview, filename, property, width ) =
             Card.config []
@@ -121,11 +131,7 @@ view model =
                 ]
                 [ text "Download" ]
     in
-        Grid.containerFluid []
-            [ Grid.row
-                []
-                cards
-            ]
+        Grid.containerFluid [] [ Grid.row [] rows ]
 
 
 otherView : String -> Html Msg
@@ -136,7 +142,7 @@ otherView value =
                 [ Textarea.id "code"
                 , Textarea.disabled
                 , Textarea.value value
-                , Textarea.rows 11
+                , Textarea.rows 30
                 , Textarea.attrs
                     [ style
                         [ ( "font-family", "Fira Code, monospace" )
@@ -165,7 +171,6 @@ update msg model =
             in
                 ( { model
                     | qpmc = get .qpmc
-                    , nodes = get .nodes
                     , tree = get .tree
                   }
                 , Cmd.none

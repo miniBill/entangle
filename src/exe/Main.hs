@@ -11,7 +11,7 @@ import           Data.Monoid                  ((<>))
 import           Language.Haskell.Interpreter hiding (get)
 import           Network.Wai                  hiding (Request, Response)
 import           Network.Wai.Middleware.Cors
-import           Web.Scotty
+import           Web.Scotty                   hiding (request)
 
 data Request = Request {
   rCode      :: String,
@@ -24,17 +24,16 @@ instance FromJSON Request where
     <*> v .: "recursive"
 
 data Response = Response {
-  rQpmc  :: String,
-  rNodes :: String,
-  rTree  :: String
+  rQpmc :: String,
+  rTree :: String
 }
 
 instance ToJSON Response where
-  toJSON (Response qpmc nodes tree) =
-    object ["qpmc" .= qpmc, "nodes" .= nodes, "tree" .= tree]
+  toJSON (Response qpmc  tree) =
+    object ["qpmc" .= qpmc, "tree" .= tree]
 
-  toEncoding (Response qpmc nodes tree) =
-    pairs ("qpmc" .= qpmc <> "nodes" .= nodes <> "tree" .= tree)
+  toEncoding (Response qpmc tree) =
+    pairs ("qpmc" .= qpmc <> "tree" .= tree)
 
 errorString :: InterpreterError -> String
 errorString (WontCompile es) =
@@ -59,7 +58,7 @@ root = do
   tree <- useHint $ "show $ circToTree " ++ parens (rCode request)
   let final = if rRecursive request then "recursive" else "nonrecursive"
   qpmc <- useHint $ "toQpmc (circMatrices " ++ final ++ " " ++ parens (rCode request) ++ " :: [Transitions SymbolicMatrix Expr])"
-  json $ Response qpmc "nodes" tree
+  json $ Response qpmc tree
 
 corsResourcePolicy :: CorsResourcePolicy
 corsResourcePolicy = CorsResourcePolicy
