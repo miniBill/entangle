@@ -14,13 +14,17 @@ import           Network.Wai.Middleware.Cors
 import           Web.Scotty                   hiding (request)
 
 data Request = Request {
+  rName      :: String,
+  rType      :: String,
   rCode      :: String,
   rRecursive :: Bool
 }
 
 instance FromJSON Request where
   parseJSON =  withObject "Request" $ \v -> Request
-    <$> v .: "code"
+    <$> v .: "name"
+    <*> v .: "type"
+    <*> v .: "code"
     <*> v .: "recursive"
 
 data Response = Response {
@@ -55,9 +59,11 @@ useHint input =
 root :: ActionM ()
 root = do
   request <- jsonData :: ActionM Request
-  tree <- useHint $ "show $ circToTree " ++ parens (rCode request)
+  let name = rName request
+  let code = "(let " ++ name ++ " = " ++ rCode request ++ " in " ++ name ++ " :: " ++ rType request ++ ")"
+  tree <- useHint $ "show $ circToTree " ++ code
   let final = if rRecursive request then "recursive" else "nonrecursive"
-  qpmc <- useHint $ "toQpmc (circMatrices " ++ final ++ " " ++ parens (rCode request) ++ " :: [Transitions SymbolicMatrix Expr])"
+  qpmc <- useHint $ "toQpmc (circMatrices " ++ final ++ " " ++ code ++ " :: [Transitions SymbolicMatrix Expr])"
   json $ Response qpmc tree
 
 corsResourcePolicy :: CorsResourcePolicy

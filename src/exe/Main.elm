@@ -11,16 +11,6 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Quipper
-import Window
-
-
-breakpoints : { sm : Int, md : Int, lg : Int, xl : Int }
-breakpoints =
-    { sm = 576
-    , md = 768
-    , lg = 992
-    , xl = 1200
-    }
 
 
 main : Program Never Model Msg
@@ -77,26 +67,35 @@ view model =
               , "Main.hs"
               , .quipperState >> Quipper.code
               , [ Col.xs12, Col.md6 ]
-              )
-            , ( "QPMC"
-              , otherView
-              , "output.qpmc"
-              , .qpmc
-              , [ Col.xs12, Col.md12, Col.pushMd6 ]
+              , [ "flex-first" ]
               )
             , ( "Tree"
               , otherView
               , "tree.log"
               , .tree
-              , [ Col.xs12, Col.md6, Col.pullMd6 ]
+              , [ Col.xs12, Col.md6 ]
+              , [ "flex-last", "flex-md-unordered" ]
+              )
+            , ( "QPMC"
+              , otherView
+              , "output.qpmc"
+              , .qpmc
+              , [ Col.xs12, Col.md12 ]
+              , [ "flex-md-last" ]
               )
             ]
 
         rows =
             List.map
-                (\( name, subview, filename, property, width ) ->
+                (\( name, subview, filename, property, width, classes ) ->
                     Grid.col
-                        (Col.attrs [ class "mt-4" ] :: width)
+                        (Col.attrs
+                            [ ("mt-4" :: classes)
+                                |> List.map (\c -> ( c, True ))
+                                |> classList
+                            ]
+                            :: width
+                        )
                         [ Card.view <| viewCard ( name, subview, filename, property, width ) ]
                 )
                 cardDescriptions

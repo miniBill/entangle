@@ -84,8 +84,8 @@ update (Config getter setter lift result) msg model =
             Code code ->
                 trans { qmodel | code = code }
 
-            FunctionName _ ->
-                trans qmodel
+            FunctionName functionName ->
+                trans { qmodel | functionName = functionName }
 
             Input input ->
                 trans { qmodel | input = input }
@@ -111,13 +111,15 @@ transformCmd model =
             "http://localhost:3113"
 
         code =
-            ("\\q -> (do; " ++ model.code ++ ")")
+            ("\\" ++ qtuple model.input ++ " -> (do; " ++ model.code ++ ")")
                 |> Regex.replace Regex.All (Regex.regex "\n") (always "; ")
 
         body =
             Http.jsonBody <|
                 Encode.object
-                    [ ( "code", Encode.string code )
+                    [ ( "name", Encode.string model.functionName )
+                    , ( "type", Encode.string <| signature model )
+                    , ( "code", Encode.string code )
                     , ( "recursive", Encode.bool <| isRecursive model.output )
                     ]
 
@@ -171,6 +173,20 @@ qtuple : Int -> String
 qtuple n =
     case n of
         1 ->
+            "q"
+
+        _ ->
+            let
+                qs =
+                    List.range 1 n |> List.map (\i -> "q" ++ toString i)
+            in
+                "(" ++ String.join ", " qs ++ ")"
+
+
+qtupleType : Int -> String
+qtupleType n =
+    case n of
+        1 ->
             "Qubit"
 
         _ ->
@@ -181,7 +197,7 @@ signature : State -> String
 signature model =
     let
         in_ =
-            qtuple model.input
+            qtupleType model.input
 
         out =
             case model.output of
@@ -189,12 +205,9 @@ signature model =
                     "RecAction"
 
                 Qubits n ->
-                    qtuple n
-
-        type_ =
-            in_ ++ " -> Circ " ++ out
+                    qtupleType n
     in
-        model.functionName ++ " :: " ++ type_
+        in_ ++ " -> Circ " ++ out
 
 
 view : Config model msg -> model -> Html msg
@@ -316,8 +329,8 @@ codeRow model =
 code : State -> String
 code model =
     String.join "\n"
-        [ signature model
-        , model.functionName ++ " q = do"
+        [ model.functionName ++ " :: " ++ signature model
+        , model.functionName ++ " " ++ qtuple model.input ++ " = do"
         , ("  " ++ model.code)
             |> Regex.replace Regex.All (Regex.regex "\n") (always "\n  ")
         ]
