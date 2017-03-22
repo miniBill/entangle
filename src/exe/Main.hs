@@ -11,6 +11,7 @@ import           Data.Monoid                  ((<>))
 import           Language.Haskell.Interpreter hiding (get)
 import           Network.Wai                  hiding (Request, Response)
 import           Network.Wai.Middleware.Cors
+import           Web.Browser
 import           Web.Scotty                   hiding (request)
 
 data Request = Request {
@@ -94,7 +95,9 @@ corsResourcePolicy = CorsResourcePolicy
     }
 
 main :: IO ()
-main = scotty 3113 handler
+main = do
+  openBrowser "http://localhost:3113/"
+  scotty 3113 handler
 
 dev :: (Application -> IO a) -> IO a
 dev h = scottyApp handler >>= h
@@ -102,5 +105,6 @@ dev h = scottyApp handler >>= h
 handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
-  get "/" $ text "Welcome to entangle!"
+  get "/" $ file "index.html"
+  get "/elm.js" $ file "elm.js"
   post "/" $ root `rescue` text
