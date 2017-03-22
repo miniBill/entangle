@@ -1,4 +1,5 @@
 #!/bin/bash
+ulimit -Sv 1000000
 tmux new-session -d -s test "exec ./loop.sh"
 tmux rename-window 'test'
 tmux select-window -t test:0
