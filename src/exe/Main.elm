@@ -7,6 +7,7 @@ import Base64
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
 import Bootstrap.Form as Form
+import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
@@ -25,6 +26,7 @@ main =
 
 type alias Model =
     { quipperState : Quipper.State
+    , showTree : Bool
     , tree : String
     , qpmc : String
     }
@@ -32,6 +34,7 @@ type alias Model =
 
 type Msg
     = Quipper Quipper.Msg
+    | ShowTree Bool
     | TransformResult (Result Http.Error Quipper.Response)
 
 
@@ -51,6 +54,7 @@ init =
             Quipper.init quipperCfg
     in
         ( { quipperState = quipperState
+          , showTree = True
           , tree = ""
           , qpmc = ""
           }
@@ -61,29 +65,66 @@ init =
 view : Model -> Html Msg
 view model =
     let
+        quipperCard =
+            ( "Quipper"
+            , Quipper.view quipperCfg
+            , "Main.hs"
+            , .quipperState >> Quipper.code
+            , [ Col.xs12
+              , if model.showTree then
+                    Col.md6
+                else
+                    Col.md12
+              , Col.lg6
+              , if model.showTree then
+                    Col.xl4
+                else
+                    Col.xl6
+              ]
+            , [ "flex-first" ]
+            )
+
+        treeCard =
+            ( "Tree"
+            , treeView
+            , "tree.log"
+            , .tree
+            , [ Col.xs12
+              , Col.md6
+              , Col.xl4
+              ]
+            , [ "flex-last", "flex-md-unordered" ]
+            )
+
+        qpmcCard =
+            ( "QPMC"
+            , qpmcView
+            , "output.qpmc"
+            , .qpmc
+            , [ Col.xs12
+              , Col.md12
+              , if model.showTree then
+                    Col.lg12
+                else
+                    Col.lg6
+              , if model.showTree then
+                    Col.xl4
+                else
+                    Col.xl6
+              ]
+            , [ "flex-md-last" ]
+            )
+
         cardDescriptions =
-            [ ( "Quipper"
-              , (\_ -> Quipper.view quipperCfg model)
-              , "Main.hs"
-              , .quipperState >> Quipper.code
-              , [ Col.xs12, Col.md6 ]
-              , [ "flex-first" ]
-              )
-            , ( "Tree"
-              , otherView
-              , "tree.log"
-              , .tree
-              , [ Col.xs12, Col.md6 ]
-              , [ "flex-last", "flex-md-unordered" ]
-              )
-            , ( "QPMC"
-              , otherView
-              , "output.qpmc"
-              , .qpmc
-              , [ Col.xs12, Col.md12 ]
-              , [ "flex-md-last" ]
-              )
-            ]
+            if model.showTree then
+                [ quipperCard
+                , treeCard
+                , qpmcCard
+                ]
+            else
+                [ quipperCard
+                , qpmcCard
+                ]
 
         rows =
             List.map
@@ -96,7 +137,7 @@ view model =
                             ]
                             :: width
                         )
-                        [ Card.view <| viewCard ( name, subview, filename, property, width ) ]
+                        [ viewCard ( name, subview, filename, property, width ) ]
                 )
                 cardDescriptions
 
@@ -106,9 +147,10 @@ view model =
                     [ class "text-center" ]
                     [ text name ]
                 |> Card.block []
-                    [ Card.text [] [ subview (property model) ] ]
+                    [ Card.text [] [ subview model ] ]
                 |> Card.footer []
                     [ downloadLink filename property ]
+                |> Card.view
 
         downloadLink filename property =
             Button.linkButton
@@ -130,25 +172,52 @@ view model =
                 ]
                 [ text "Download" ]
     in
-        Grid.containerFluid [] [ Grid.row [] rows ]
+        Grid.containerFluid []
+            [ Grid.row [] rows ]
 
 
-otherView : String -> Html Msg
-otherView value =
-    Form.form []
-        [ Form.group []
-            [ Textarea.textarea
-                [ Textarea.id "code"
-                , Textarea.disabled
-                , Textarea.value value
-                , Textarea.rows 30
-                , Textarea.attrs
-                    [ style
-                        [ ( "font-family", "Fira Code, monospace" )
-                        ]
-                    ]
+treeCheckbox : Model -> Html Msg
+treeCheckbox model =
+    Checkbox.checkbox
+        [ Checkbox.onCheck ShowTree
+        , Checkbox.checked model.showTree
+        ]
+        "Show tree"
+
+
+codeArea : String -> Html msg
+codeArea value =
+    Textarea.textarea
+        [ Textarea.id "code"
+        , Textarea.disabled
+        , Textarea.value value
+        , Textarea.rows 30
+        , Textarea.attrs
+            [ style
+                [ ( "font-family", "Fira Code, monospace" )
                 ]
             ]
+        ]
+
+
+treeView : Model -> Html Msg
+treeView model =
+    Form.form []
+        [ Form.group []
+            [ treeCheckbox model
+            , codeArea model.tree
+            ]
+        ]
+
+
+qpmcView : Model -> Html Msg
+qpmcView model =
+    Form.form []
+        [ Form.group [] <|
+            if model.showTree then
+                [ codeArea model.qpmc ]
+            else
+                [ treeCheckbox model, codeArea model.qpmc ]
         ]
 
 
@@ -157,6 +226,9 @@ update msg model =
     case msg of
         Quipper q ->
             Quipper.update quipperCfg q model
+
+        ShowTree showTree ->
+            ( { model | showTree = showTree }, Cmd.none )
 
         TransformResult r ->
             let

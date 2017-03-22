@@ -58,7 +58,6 @@ useHint input =
         , "Quipper"
         , "Transitions"
         , "Qpmc"
-        , "QMatrix"
         , "Expr"
         , "SymbolicMatrix"
         , "Data.Matrix"
@@ -78,7 +77,7 @@ root = do
   tree <- useHint treeCode
   let final = if rRecursive request then "recursive" else "nonrecursive"
   let kind = rKind request
-  let qpmcCode = concat ["toQpmc $ circMatrices ", final, " ", kind, " ",  f]
+  let qpmcCode = concat ["toQpmc (", show name, ", circMatrices ", final, " ", kind, " ",  f, ")"]
   qpmc <- useHint qpmcCode
   json $ Response qpmc tree
 

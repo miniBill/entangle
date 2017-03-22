@@ -18,6 +18,10 @@ import           Transitions
 
 data RecAction = Loop | Exit deriving Show
 
+exitOn :: Monad m => Bool -> m RecAction
+exitOn True  = return Exit
+exitOn False = return Loop
+
 nonrecursive :: a -> [Transition m Expr]
 nonrecursive = const []
 
@@ -25,10 +29,10 @@ recursive :: RecAction -> [Transition m v]
 recursive Exit = []
 recursive Loop = [Transition Nothing $ StateName 0 []]
 
-symbolic :: SymbolicMatrix a
+symbolic :: SymbolicMatrix Expr
 symbolic = error "proxy"
 
-numeric :: Matrix a
+numeric :: Matrix (Complex Expr)
 numeric = error "proxy"
 
 class ToQpmc a where
@@ -45,10 +49,10 @@ instance Show a => ToQpmc (Matrix a) where
         in
             "[" ++ inner ++ "]"
 
-instance ToQpmc (m (Complex a)) => ToQpmc [Transitions m a] where
-    toQpmc ts = "qmc\n"
+instance ToQpmc (m (Complex a)) => ToQpmc (String, [Transitions m a]) where
+    toQpmc (name, ts) = "qmc\n"
             ++ concatMap transitionToMatrix (concatMap trDestinations ts)
-            ++ "module test\n"
+            ++ "module " ++ name ++ "\n"
             ++ "  s: [0.." ++ show (foldr (max . snId) 0 named) ++ "] init 0;\n"
             ++ concatMap (\i -> "  b" ++ show i ++ ": bool init false;\n") [0..bs-1]
             ++ concatMap toQpmc (sortBy tsort ts)

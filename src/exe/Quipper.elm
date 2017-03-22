@@ -165,15 +165,20 @@ init (Config _ _ _ result) =
         quipperCode =
             String.join "\n"
                 [ "hadamard_at q1"
-                , "qnot_at q1 `controlled` q2"
-                , "return (q1, q2)"
+                , "m <- measure q2"
+                , "bool <- dynamic_lift m"
+                , "if bool"
+                , "  then gate_X_at q1"
+                , "  else gate_Z_at q1"
+                , "m1 <- measure q1"
+                , "exitOn bool"
                 ]
 
         state =
             { code = quipperCode
-            , functionName = "f"
+            , functionName = "qkdCirc"
             , input = 2
-            , output = Qubits 2
+            , output = Recursive
             , kind = Symbolic
             , debounceState = Debounce.init
             }

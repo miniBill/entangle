@@ -3,10 +3,6 @@ module Examples where
 import           Qpmc
 import           Quipper
 
-exitOn :: Bool -> Circ RecAction
-exitOn True  = return Exit
-exitOn False = return Loop
-
 ----------------------------------------------------------------------
 
 qftInternal :: [Qubit] -> Circ [Qubit]
