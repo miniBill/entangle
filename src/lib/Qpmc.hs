@@ -32,7 +32,7 @@ recursive Loop = [Transition Nothing $ StateName 0 []]
 symbolic :: SymbolicMatrix Expr
 symbolic = error "proxy"
 
-numeric :: Matrix (Complex Expr)
+numeric :: Matrix Expr
 numeric = error "proxy"
 
 class ToQpmc a where

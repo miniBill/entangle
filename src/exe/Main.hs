@@ -2,16 +2,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TemplateHaskell       #-}
 
 module Main where
 
 import           Data.Aeson.Types
+import qualified Data.ByteString
+import           Data.ByteString.Lazy         (fromStrict)
+import           Data.FileEmbed
 import           Data.List
 import           Data.Monoid                  ((<>))
 import           Language.Haskell.Interpreter hiding (get)
 import           Network.Wai                  hiding (Request, Response)
 import           Network.Wai.Middleware.Cors
-import           Web.Browser
 import           Web.Scotty                   hiding (request)
 
 data Request = Request {
@@ -96,15 +99,21 @@ corsResourcePolicy = CorsResourcePolicy
 
 main :: IO ()
 main = do
-  openBrowser "http://localhost:3113/"
+  putStrLn "You can see the interface at http://localhost:3113/"
   scotty 3113 handler
 
 dev :: (Application -> IO a) -> IO a
 dev h = scottyApp handler >>= h
 
+indexHtml :: Data.ByteString.ByteString
+indexHtml = $(embedFile "src/exe/index.html")
+
+elmJs :: Data.ByteString.ByteString
+elmJs = $(embedFile "src/exe/elm.js")
+
 handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
-  get "/" $ file "index.html"
-  get "/elm.js" $ file "elm.js"
+  get "/" $ raw $ fromStrict indexHtml
+  get "/elm.js" $ raw $ fromStrict elmJs
   post "/" $ root `rescue` text
