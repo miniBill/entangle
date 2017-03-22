@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module QMatrix (
@@ -11,6 +12,8 @@ module QMatrix (
     ) where
 
 import           Complex
+import           Data.Matrix hiding (identity, matrix, zero, (<->), (<|>))
+import qualified Data.Matrix
 
 data MeasureKind = UL | BR
 
@@ -85,3 +88,37 @@ class (Fractional a, Floating a, QMatrix m (Complex a)) => QCMatrix m a where
         phaseShiftMatrix 1 1 = 1
         phaseShiftMatrix 2 2 = exp $ ii * (phi :+ 0)
         phaseShiftMatrix _ _ = 0
+
+downcast :: Integer -> Int
+downcast x
+    | x > fromIntegral (maxBound :: Int) = error "Overflow!"
+    | otherwise = fromIntegral x
+
+instance Num a => QMatrix Matrix a where
+    kronecker a b =
+        let
+            ra = nrows a
+            rb = nrows b
+            ca = ncols a
+            cb = ncols b
+            gen (r, c) = ae * be where
+                ae = a ! (ar, ac)
+                ar = 1 + (r - 1) `div` rb
+                ac = 1 + (c - 1) `div` cb
+                be = b ! (br, bc)
+                br = 1 + (r - 1) `mod` rb
+                bc = 1 + (c - 1) `mod` cb
+        in
+            Data.Matrix.matrix (ra * rb) (ca * cb) gen
+
+    identity = Data.Matrix.identity . downcast
+
+    zero r c = Data.Matrix.zero (downcast r) (downcast c)
+
+    matrix r c f = Data.Matrix.matrix (downcast r) (downcast c) (\(y, x) -> f (fromIntegral y) (fromIntegral x))
+
+    (<->) = (Data.Matrix.<->)
+
+    (<|>) = (Data.Matrix.<|>)
+
+instance (Fractional a, Floating a) => QCMatrix Matrix a where

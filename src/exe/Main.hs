@@ -61,7 +61,6 @@ useHint input =
         , "QMatrix"
         , "Expr"
         , "SymbolicMatrix"
-        , "MatrixExtra"
         , "Data.Matrix"
         ]
       interpret input ""
