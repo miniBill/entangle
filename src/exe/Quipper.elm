@@ -250,9 +250,9 @@ view (Config getter _ lift _) model =
                     [ ( "Output qubits", outputRow ) ]
 
         rowsTail =
-            [ ( "Body", bodyRow )
+            [ ( "Kind", kindRow )
+            , ( "Body", bodyRow )
             , ( "Code", codeRow )
-            , ( "Kind", kindRow )
             ]
 
         rows =
