@@ -56,8 +56,8 @@ type ControlCount = QubitId
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
-circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> (q -> Circ b) -> [Transitions m a]
-circMatrices final = treeToTransitions final . circToTree
+circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> m a -> (q -> Circ b) -> [Transitions m a]
+circMatrices final _ = treeToTransitions final . circToTree
 
 circToTree :: QTuple a => (a -> Circ b) -> CircTree b
 circToTree mcirc = tree where
@@ -122,6 +122,7 @@ gateToMatrixParameterized size name t qs cs =
         gateToMatrix size qs cs active
 
 -- |gateToMatrix takes the total number of qubits, an active matrix and returns the matrix needed to represent the full gate.
+gateToMatrix :: QMatrix m a => QubitCount -> [QubitId] -> [QubitId] -> m a -> m a
 gateToMatrix size qs cs active =
     let
         wires = cs ++ qs

@@ -7,12 +7,11 @@ module Qpmc where
 import           Data.Char
 import           Data.Function
 import           Data.List
-import           Data.Matrix    (Matrix)
+import           Data.Matrix    (Matrix, toLists)
 import           Data.Maybe
 
 import           Complex
 import           Expr
-import           QMatrix
 import           SymbolicMatrix hiding (eval)
 import           Transitions
 
@@ -37,6 +36,14 @@ class ToQpmc a where
 
 instance (Floating a, Show a) => ToQpmc (SymbolicMatrix a) where
     toQpmc = show
+
+instance Show a => ToQpmc (Matrix a) where
+    toQpmc mat =
+        let
+            sl l = intercalate "," $ map show l
+            inner = intercalate ";" $ map sl $ toLists mat
+        in
+            "[" ++ inner ++ "]"
 
 instance ToQpmc (m (Complex a)) => ToQpmc [Transitions m a] where
     toQpmc ts = "qmc\n"

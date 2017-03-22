@@ -48,14 +48,6 @@ instance Num a => QMatrix Matrix a where
 
 instance (Fractional a, Floating a) => QCMatrix Matrix a where
 
-instance Show a => ToQpmc (Matrix a) where
-    toQpmc mat =
-        let
-            sl l = intercalate "," $ map show l
-            inner = intercalate ";" $ map sl $ toLists mat
-        in
-            "[" ++ inner ++ "]"
-
 -- ⎛⎜⎝⎞⎟⎠
 --             ⎛a c⎞   ⎛p⎞
 -- ⎛a⎞   ⎛c⎞   ⎜a d⎟   ⎜q⎟

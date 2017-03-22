@@ -17,7 +17,8 @@ data Request = Request {
   rName      :: String,
   rType      :: String,
   rCode      :: String,
-  rRecursive :: Bool
+  rRecursive :: Bool,
+  rKind      :: String
 }
 
 instance FromJSON Request where
@@ -26,6 +27,7 @@ instance FromJSON Request where
     <*> v .: "type"
     <*> v .: "code"
     <*> v .: "recursive"
+    <*> v .: "kind"
 
 data Response = Response {
   rQpmc :: String,
@@ -51,7 +53,17 @@ useHint :: String -> ActionM String
 useHint input =
   let
     result = runInterpreter $ do
-      setImports ["Prelude", "Quipper", "Transitions", "Qpmc", "Expr", "SymbolicMatrix"]
+      setImports
+        [ "Prelude"
+        , "Quipper"
+        , "Transitions"
+        , "Qpmc"
+        , "QMatrix"
+        , "Expr"
+        , "SymbolicMatrix"
+        , "MatrixExtra"
+        , "Data.Matrix"
+        ]
       interpret input ""
   in
     liftAndCatchIO $ either errorString id <$> result
@@ -60,10 +72,15 @@ root :: ActionM ()
 root = do
   request <- jsonData :: ActionM Request
   let name = rName request
-  let code = "(let " ++ name ++ " = " ++ rCode request ++ " in " ++ name ++ " :: " ++ rType request ++ ")"
-  tree <- useHint $ "show $ circToTree " ++ code
+  let code = rCode request
+  let type_ = rType request
+  let f = concat ["(let ", name, " = ", code, " in ", name, " :: ", type_, ")"]
+  let treeCode = "show $ circToTree " ++ f
+  tree <- useHint treeCode
   let final = if rRecursive request then "recursive" else "nonrecursive"
-  qpmc <- useHint $ "toQpmc (circMatrices " ++ final ++ " " ++ code ++ " :: [Transitions SymbolicMatrix Expr])"
+  let kind = rKind request
+  let qpmcCode = concat ["toQpmc $ circMatrices ", final, " ", kind, " ",  f]
+  qpmc <- useHint qpmcCode
   json $ Response qpmc tree
 
 corsResourcePolicy :: CorsResourcePolicy

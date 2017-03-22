@@ -11,6 +11,7 @@ import Bootstrap.Grid.Row as Row
 import Bootstrap.Form as Form
 import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Form.Input as Input
+import Bootstrap.Form.Radio as Radio
 import Bootstrap.Form.Textarea as Textarea
 import Debounce
 
@@ -20,8 +21,14 @@ type alias State =
     , input : Int
     , output : Output
     , code : String
+    , kind : Kind
     , debounceState : Debounce.State
     }
+
+
+type Kind
+    = Symbolic
+    | Numeric
 
 
 type Output
@@ -34,6 +41,7 @@ type Msg
     | FunctionName String
     | Input Int
     | Output Output
+    | Kind Kind
     | Deb (Debounce.Msg Msg)
     | Transform
 
@@ -93,6 +101,9 @@ update (Config getter setter lift result) msg model =
             Output output ->
                 trans { qmodel | output = output }
 
+            Kind kind ->
+                trans { qmodel | kind = kind }
+
             Deb a ->
                 let
                     ( qmodel_, cmd ) =
@@ -121,6 +132,15 @@ transformCmd model =
                     , ( "type", Encode.string <| signature model )
                     , ( "code", Encode.string code )
                     , ( "recursive", Encode.bool <| isRecursive model.output )
+                    , ( "kind"
+                      , Encode.string <|
+                            case model.kind of
+                                Symbolic ->
+                                    "symbolic"
+
+                                Numeric ->
+                                    "numeric"
+                      )
                     ]
 
         decoder =
@@ -144,15 +164,16 @@ init (Config _ _ _ result) =
     let
         quipperCode =
             String.join "\n"
-                [ "hadamard_at q"
-                , "return q"
+                [ "hadamard_at q1"
+                , "return (q1, q2)"
                 ]
 
         state =
             { code = quipperCode
             , functionName = "f"
-            , input = 1
-            , output = Qubits 1
+            , input = 2
+            , output = Qubits 2
+            , kind = Symbolic
             , debounceState = Debounce.init
             }
     in
@@ -230,6 +251,7 @@ view (Config getter _ lift _) model =
         rowsTail =
             [ ( "Body", bodyRow )
             , ( "Code", codeRow )
+            , ( "Kind", kindRow )
             ]
 
         rows =
@@ -255,16 +277,6 @@ nameRow model =
     Input.text
         [ Input.value model.functionName
         , Input.onInput FunctionName
-        ]
-
-
-bodyRow : State -> Html Msg
-bodyRow model =
-    Textarea.textarea
-        [ Textarea.value model.code
-        , Textarea.onInput Code
-        , Textarea.rows 10
-        , Textarea.attrs [ monospaced ]
         ]
 
 
@@ -321,9 +333,38 @@ outputRow model =
             ]
 
 
+bodyRow : State -> Html Msg
+bodyRow model =
+    Textarea.textarea
+        [ Textarea.value model.code
+        , Textarea.onInput Code
+        , Textarea.rows 10
+        , Textarea.attrs [ monospaced ]
+        ]
+
+
 codeRow : State -> Html Msg
 codeRow model =
     span [ monospaced ] [ text <| code model ]
+
+
+kindRow : State -> Html Msg
+kindRow model =
+    let
+        kinds =
+            [ Symbolic, Numeric ]
+
+        kindToRadio kind =
+            Radio.create
+                [ Radio.onClick (Kind kind)
+                , Radio.checked <| model.kind == kind
+                , Radio.inline
+                ]
+                (toString kind)
+    in
+        span [] <|
+            Radio.radioList "kind" <|
+                List.map kindToRadio kinds
 
 
 code : State -> String
