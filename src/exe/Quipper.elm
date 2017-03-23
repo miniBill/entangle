@@ -268,10 +268,10 @@ view (Config getter _ lift _) model =
                 (\( name, content ) ->
                     Form.row [ Row.rightSm ]
                         [ Form.colLabel
-                            [ Col.xs12, Col.sm2, Col.md3, Col.lg2 ]
+                            [ Col.xs12, Col.sm2, Col.md3, Col.lg3 ]
                             [ text name ]
                         , Form.col
-                            [ Col.xs12, Col.sm10, Col.md9, Col.lg10 ]
+                            [ Col.xs12, Col.sm10, Col.md9, Col.lg9 ]
                             [ Html.map lift <| content <| getter model ]
                         ]
                 )
@@ -351,7 +351,12 @@ bodyRow model =
 
 codeRow : State -> Html Msg
 codeRow model =
-    span [ monospaced ] [ text <| code model ]
+    Textarea.textarea
+        [ Textarea.value <| code model
+        , Textarea.rows 10
+        , Textarea.attrs [ monospaced ]
+        , Textarea.disabled
+        ]
 
 
 kindRow : State -> Html Msg

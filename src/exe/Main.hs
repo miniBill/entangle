@@ -111,9 +111,13 @@ indexHtml = $(embedFile "src/exe/index.html")
 elmJs :: Data.ByteString.ByteString
 elmJs = $(embedFile "src/exe/elm.js")
 
+styleCss :: Data.ByteString.ByteString
+styleCss = $(embedFile "src/exe/style.css")
+
 handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
   get "/" $ raw $ fromStrict indexHtml
   get "/elm.js" $ raw $ fromStrict elmJs
+  get "/style.css" $ raw $ fromStrict styleCss
   post "/" $ root `rescue` text

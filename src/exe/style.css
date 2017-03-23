@@ -1,0 +1,22 @@
+body {
+    background-color: #00A46E;
+}
+
+.form-control:disabled {
+    color: black;
+    background-color: #58D7AD;
+}
+
+.card {
+    background-color: #0AC688;
+}
+
+.card-header,
+.card-footer {
+    color: white;
+    background-color: #007E55;
+}
+
+.btn-primary {
+    background-color: #186CC3;
+}
