@@ -2,9 +2,13 @@ body {
     background-color: #00A46E;
 }
 
+.form-control {
+    background-color: #58D7AD;
+}
+
 .form-control:disabled {
     color: black;
-    background-color: #58D7AD;
+    background-color: #00A46E;
 }
 
 .card {
@@ -18,5 +22,13 @@ body {
 }
 
 .btn-primary {
-    background-color: #186CC3;
+    color: black;
+    background-color: #97F063;
+    border-color: #97F063;
+}
+
+.btn-primary:hover {
+    color: black;
+    background-color: #5EE90C;
+    border-color: #5EE90C;
 }
