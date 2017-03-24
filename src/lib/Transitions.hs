@@ -91,12 +91,35 @@ treeToTransitions final t = go (StateName 0 []) t where
     wires = getWires t
     qubit_max :: QubitId
     qubit_max = foldr max minBound wires
-    go sn (LeafNode x) = if null f then [] else [Transitions sn f] where
-        f = final x
+    go sn (LeafNode x) =
+        let
+            f = final x
+        in
+            if null f
+                then []
+                else [Transitions sn f]
     go sn@(StateName i bs) (GateNode name qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
         mat = gateToMatrixNoParam qubit_max name qs cts
         state' = StateName (succ i) bs
+    go sn@(StateName i bs) (ResetNode qi c) =
+        let
+            state' = StateName (succ $ succ i) bs
+
+            lmat = between (pred qi) (QMatrix.measure UL) (qubit_max - qi)
+            ls = StateName (succ i) (bs ++ [True])
+            lt = Transition (Just lmat) ls
+
+            rmat = between (pred qi) (QMatrix.measure BR) (qubit_max - qi)
+            rs = StateName (succ i) (bs ++ [False])
+            rt = Transition (Just rmat) rs
+
+            nmat = between (pred qi) QMatrix.pauliX (qubit_max - qi)
+            nt = Transition (Just nmat) state'
+
+            it = Transition Nothing state'
+        in
+            Transitions sn [lt, rt] : Transitions ls [it] : Transitions rs [nt] : go state' c
     go sn@(StateName i bs) (ParameterizedGateNode name k qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
         mat = gateToMatrixParameterized qubit_max name k qs cts
@@ -114,6 +137,7 @@ treeToTransitions final t = go (StateName 0 []) t where
 --getWires :: CircTree a -> [QubitId]
 getWires :: Show a => CircTree a -> [QubitId]
 getWires (LeafNode _)                        = []
+getWires (ResetNode q c)                     = q : getWires c
 getWires (GateNode _ qs cs c)                = qs ++ cs ++ getWires c
 getWires (ParameterizedGateNode _ _ qs cs c) = qs ++ cs ++ getWires c
 getWires (MeasureNode q _ l r)               = q : getWires l ++ getWires r

@@ -28,10 +28,7 @@ newtype EntangleMonad a = EntangleMonad {
     untangle :: BitState -- ^ state of bits before the operation
              -> [QubitId] -- ^ measured qubits before the operation
              -> Either String (CircTree (BitState, [QubitId], a)) -- ^ tree after the operation
-}
-
-instance Functor EntangleMonad where
-    fmap = liftM
+} deriving Functor
 
 instance Applicative EntangleMonad where
     pure = return
@@ -51,11 +48,9 @@ data CircTree a
     = GateNode String [QubitId] [QubitId] (CircTree a) -- ^ name, affected qubits, controls, child
     | ParameterizedGateNode String Double [QubitId] [QubitId] (CircTree a) -- ^ name, parameter, affected qubits, controls, child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
+    | ResetNode QubitId (CircTree a)
     | LeafNode a
-    deriving Traversable
-
-instance Functor CircTree where
-    fmap = liftM
+    deriving (Foldable, Traversable, Functor)
 
 instance Applicative CircTree where
     pure = return
@@ -66,20 +61,17 @@ instance Monad CircTree where
     (GateNode n qs cs t) >>= f = GateNode n qs cs (t >>= f)
     (ParameterizedGateNode n p qs cs t) >>= f = ParameterizedGateNode n p qs cs (t >>= f)
     (MeasureNode q b l r) >>= f = MeasureNode q b (l >>= f) (r >>= f)
+    (ResetNode q r) >>= f = ResetNode q (r >>= f)
     (LeafNode x) >>= f = f x
-
-instance Foldable CircTree where
-    foldMap f (GateNode _ _ _ t)                = foldMap f t
-    foldMap f (ParameterizedGateNode _ _ _ _ t) = foldMap f t
-    foldMap f (MeasureNode _ _ l r)             = foldMap f l <> foldMap f r
-    foldMap f (LeafNode x)                      = f x
 
 instance Show a => Show (CircTree a) where
     show = showTree 0 show' child where
         child (GateNode _ _ _ c)                = [c]
         child (ParameterizedGateNode _ _ _ _ c) = [c]
         child (MeasureNode _ _ l r)             = [l, r]
+        child (ResetNode _ c)                   = [c]
         child (LeafNode _)                      = []
+        show' (ResetNode q _) = "ResetNode on " ++ show q
         show' (GateNode n qs cs _) = "GateNode \"" ++ n ++ "\" on " ++ qubits ++ (if null controls then "" else " and controls " ++ controls) where
             qubits   = intercalate ", " $ map show qs
             controls = intercalate ", " $ map show cs
@@ -101,6 +93,10 @@ indent i = replicate (4*i) ' '
 transformGate :: String -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformGate name qs cs = EntangleMonad res where
     res bs ms = Right $ GateNode name qs cs $ LeafNode (bs, ms, ())
+
+transformReset :: QubitId -> EntangleMonad ()
+transformReset q = EntangleMonad res where
+    res bs ms = Right $ ResetNode q $ LeafNode (bs, ms, ())
 
 transformParameterizedGate :: String -> Double -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformParameterizedGate name t qs cs = EntangleMonad res where
@@ -140,7 +136,9 @@ transformDynamicLifting i =
 mytransformer :: Transformer EntangleMonad QubitId BitId
 --mytransformer g | trace (show g) False = undefined
 mytransformer (T_QGate "RESET" _ _ _ _ f) = f g where
-    g wires [] [] = fail "Unfinished RESET"
+    g wires [] [] = do
+        mapM_ transformReset wires
+        return (wires, [], [])
     g _ _ _       = fail "Gate RESET doesn't support controls yet"
 mytransformer (T_QGate name _ _ _ _ f) = f g where
     g :: [QubitId] -> [QubitId] -> Ctrls QubitId BitId -> EntangleMonad ([QubitId], [QubitId], Ctrls QubitId BitId)

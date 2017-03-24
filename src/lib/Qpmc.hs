@@ -50,19 +50,26 @@ instance Show a => ToQpmc (Matrix a) where
             "[" ++ inner ++ "]"
 
 instance ToQpmc (m (Complex a)) => ToQpmc (String, [Transitions m a]) where
-    toQpmc (name, ts) = "qmc\n"
-            ++ concatMap transitionToMatrix (concatMap trDestinations ts)
-            ++ "module " ++ name ++ "\n"
-            ++ "  s: [0.." ++ show (foldr (max . snId) 0 named) ++ "] init 0;\n"
-            ++ concatMap (\i -> "  b" ++ show i ++ ": bool init false;\n") [0..bs-1]
-            ++ concatMap toQpmc (sortBy tsort ts)
-            ++ concatMap finalToQpmc finals
-            ++ "endmodule" where
-        bs = foldr (max . length . snBs . trToState) 0 $ concatMap trDestinations ts
-        named :: [StateName]
-        named = concatMap (map trToState . trDestinations) ts
-        finals :: [StateName]
-        finals = filter (\(StateName i _) -> i > 0) $ named \\ map trFromState ts
+    toQpmc (name, ts) =
+        let
+            bs = foldr (max . length . snBs . trToState) 0 $ concatMap trDestinations ts
+            named :: [StateName]
+            named = nub $ concatMap (map trToState . trDestinations) ts
+            froms :: [StateName]
+            froms = nub $ map trFromState ts
+            finals :: [StateName]
+            finals = filter (\(StateName i _) -> i > 0) $ named \\ froms
+        in
+            concat
+                [ "qmc\n\n"
+                , concatMap transitionToMatrix (concatMap trDestinations ts), "\n"
+                , "module ", name, "\n"
+                , "  s: [0..", show (foldr (max . snId) 0 named), "] init 0;\n"
+                , concatMap (\i -> "  b" ++ show i ++ ": bool init false;\n") [0..bs-1], "\n"
+                , concatMap toQpmc (sortBy tsort ts)
+                , concatMap finalToQpmc finals
+                , "endmodule"
+                ]
 
 tsort :: Transitions m a -> Transitions m a -> Ordering
 tsort = compare `on` trFromState
