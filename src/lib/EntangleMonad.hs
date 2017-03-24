@@ -1,15 +1,17 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveTraversable   #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module EntangleMonad where
 
+import           Control.Applicative
 import           Control.Monad
+import           Data.Foldable       hiding (concatMap, foldr)
 import           Data.List
 import           Data.Map.Lazy       (Map)
 import qualified Data.Map.Lazy       as DM
 import           Data.Maybe
 import           Data.Monoid
-import Data.Foldable hiding (foldr,concatMap)
-import Control.Applicative
 
 --import           Debug.Trace
 
@@ -25,7 +27,7 @@ type BitState = Map BitId Bool
 newtype EntangleMonad a = EntangleMonad {
     untangle :: BitState -- ^ state of bits before the operation
              -> [QubitId] -- ^ measured qubits before the operation
-             -> CircTree (BitState, [QubitId], a) -- ^ tree after the operation
+             -> Either String (CircTree (BitState, [QubitId], a)) -- ^ tree after the operation
 }
 
 instance Functor EntangleMonad where
@@ -36,16 +38,21 @@ instance Applicative EntangleMonad where
     (<*>) = ap
 
 instance Monad EntangleMonad where
-    return x = EntangleMonad (\bs ms -> LeafNode (bs, ms, x))
-    x >>= f = EntangleMonad $ \bs ms -> do
-        (bs', ms', y) <- untangle x bs ms
-        untangle (f y) bs' ms'
+    fail err = EntangleMonad (\_ _ -> Left err)
+    return x = EntangleMonad (\bs ms -> Right $ LeafNode (bs, ms, x))
+    x >>= f = EntangleMonad $ \bs ms ->
+        let
+            ect = untangle x bs ms
+            next (bs', ms', y) = untangle (f y) bs' ms'
+        in
+            ect >>= \ct -> join <$> mapM next ct
 
 data CircTree a
     = GateNode String [QubitId] [QubitId] (CircTree a) -- ^ name, affected qubits, controls, child
     | ParameterizedGateNode String Double [QubitId] [QubitId] (CircTree a) -- ^ name, parameter, affected qubits, controls, child
     | MeasureNode QubitId BitId (CircTree a) (CircTree a)
     | LeafNode a
+    deriving Traversable
 
 instance Functor CircTree where
     fmap = liftM
@@ -93,58 +100,74 @@ indent i = replicate (4*i) ' '
 
 transformGate :: String -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformGate name qs cs = EntangleMonad res where
-    res bs ms = GateNode name qs cs $ LeafNode (bs, ms, ())
+    res bs ms = Right $ GateNode name qs cs $ LeafNode (bs, ms, ())
 
 transformParameterizedGate :: String -> Double -> [QubitId] -> [QubitId] -> EntangleMonad ()
 transformParameterizedGate name t qs cs = EntangleMonad res where
-    res bs ms = ParameterizedGateNode name t qs cs $ LeafNode (bs, ms, ())
+    res bs ms = Right $ ParameterizedGateNode name t qs cs $ LeafNode (bs, ms, ())
 
 transformMeasure :: QubitId -> EntangleMonad BitId
 --transformMeasure i | trace ("Measuring " ++ show (unQubitID i)) False = undefined
-transformMeasure i = EntangleMonad res where
-    res bs ms = MeasureNode i new l r where
-        ms' = i : ms
+transformMeasure i =
+    let
+        res bs ms = Right $ MeasureNode i new l r where
+            ms' = i : ms
 
-        lastBit = foldr max minBound $ DM.keys bs
-        new = succ lastBit
+            lastBit = foldr max minBound $ DM.keys bs
+            new = succ lastBit
 
-        bsF = DM.insert new False bs
-        l = LeafNode (bsF, ms', new)
+            bsF = DM.insert new False bs
+            l = LeafNode (bsF, ms', new)
 
-        bsT = DM.insert new True bs
-        r = LeafNode (bsT, ms', new)
+            bsT = DM.insert new True bs
+            r = LeafNode (bsT, ms', new)
+    in
+        EntangleMonad res
 
 transformDynamicLifting :: BitId -> EntangleMonad Bool
-transformDynamicLifting i = EntangleMonad res where
-    res bs ms = LeafNode (bs, ms, b) where
-        b = fromMaybe False $ DM.lookup i bs
+transformDynamicLifting i =
+    let
+        res bs ms =
+            let
+                b = fromMaybe False $ DM.lookup i bs
+            in
+                Right $ LeafNode (bs, ms, b)
+    in
+        EntangleMonad res
 
 -- |mytransformer is the main transformer.
 -- it used to extract the needed information from a Quipper circuit.
 mytransformer :: Transformer EntangleMonad QubitId BitId
 --mytransformer g | trace (show g) False = undefined
+mytransformer (T_QGate "RESET" _ _ _ _ f) = f g where
+    g wires [] [] = fail "Unfinished RESET"
+    g _ _ _       = fail "Gate RESET doesn't support controls yet"
 mytransformer (T_QGate name _ _ _ _ f) = f g where
-    open (Signed _ False) = error "Negative controls are not supported yet"
-    open (Signed x True)  = x
+    g :: [QubitId] -> [QubitId] -> Ctrls QubitId BitId -> EntangleMonad ([QubitId], [QubitId], Ctrls QubitId BitId)
     g wires g_controls controls = do
-        transformGate name wires (map (assumeQubit . open) controls)
+        cs <- mapM (assumeQubit <=< open) controls
+        transformGate name wires cs
         return (wires, g_controls, controls)
 mytransformer (T_QRot name _ _ _ t _ f) = f g where
-    open (Signed _ False) = error "Negative controls are not supported yet"
-    open (Signed x True)  = x
+    g :: [QubitId] -> [QubitId] -> Ctrls QubitId BitId -> EntangleMonad ([QubitId], [QubitId], Ctrls QubitId BitId)
     g wires g_controls controls = do
-        transformParameterizedGate name t wires (map (assumeQubit . open) controls)
+        cs <- mapM (assumeQubit <=< open) controls
+        transformParameterizedGate name t wires cs
         return (wires, g_controls, controls)
 mytransformer (T_QMeas f) = f transformMeasure
 mytransformer (T_DTerm _ f) = f (const $ return ())
 mytransformer g = error $ "Gate \"" ++ show g ++ "\" is not supported yet"
 
-assumeQubit :: B_Endpoint QubitId BitId -> QubitId
-assumeQubit (Endpoint_Qubit qi) = qi
-assumeQubit (Endpoint_Bit _) = error "Using bits as controls is not supported yet"
+open :: Monad m => Signed (B_Endpoint QubitId BitId) -> m (B_Endpoint QubitId BitId)
+open (Signed _ False) = fail "Negative controls are not supported yet"
+open (Signed x True)  = return x
+
+assumeQubit :: Monad m => B_Endpoint QubitId BitId -> m QubitId
+assumeQubit (Endpoint_Qubit qi) = return qi
+assumeQubit (Endpoint_Bit _) = fail "Using bits as controls is not supported yet"
 
 mydtransformer :: DynamicTransformer EntangleMonad QubitId BitId
-mydtransformer = DT mytransformer (error "Boxed circuits are not supported yet") transformDynamicLifting
+mydtransformer = DT mytransformer (fail "Boxed circuits are not supported yet") transformDynamicLifting
 
 showIndented :: Show a => Int -> a -> String
 showIndented i x = indent i ++ replace (show x) where
@@ -153,8 +176,16 @@ showIndented i x = indent i ++ replace (show x) where
     replace (s:ss)    = s : replace ss
 
 -- |buildTree takes a 'Circuit', its arity and returns a tree representing it.
-buildTree :: DBCircuit x -> Int -> CircTree x
-buildTree circuit n = fmap (fst . (\(_, _, x) -> x)) res where
-    res = untangle monad DM.empty []
-    monad = transform_dbcircuit mydtransformer circuit bindings
-    bindings = foldr (\i -> bind_qubit (qubit_of_wire i) (qubitId i)) bindings_empty [1..n]
+buildTree :: DBCircuit x -> Int -> Either String (CircTree x)
+buildTree circuit n =
+    let
+        bindings :: Bindings QubitId BitId
+        bindings = foldr (\i -> bind_qubit (qubit_of_wire i) (qubitId i)) bindings_empty [1..n]
+        --monad :: EntangleMonad (x, Bindings QubitId BitId)
+        monad = transform_dbcircuit mydtransformer circuit bindings
+        --untangled :: Either String (CircTree (x, Bindings QubitId BitId))
+        untangled = untangle monad DM.empty []
+        clean :: CircTree (a, b, (c, d)) -> CircTree c
+        clean = fmap (\(_, _, (res, _)) -> res)
+    in
+        fmap clean untangled

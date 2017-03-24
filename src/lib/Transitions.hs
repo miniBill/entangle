@@ -15,6 +15,16 @@ import qualified GatesMatrices
 import           QMatrix
 import           QTuple
 
+resetName :: String
+resetName = "RESET"
+
+reset :: Qubit -> Circ Qubit
+reset = named_gate resetName
+
+{-# ANN module "HLint: ignore Use camelCase" #-}
+reset_at :: Qubit -> Circ ()
+reset_at = named_gate_at resetName
+
 data StateName = StateName {
     snId :: Integer,  -- ^ state id
     snBs :: [Bool]    -- ^ boolean values in the state
@@ -41,7 +51,14 @@ data Transitions m v = Transitions {
 }
 
 instance Show (Transitions m v) where
-    show (Transitions from dests) = "[Transitions trFromState=" ++ show from ++ " trDestinations=" ++ show dests ++ "]"
+    show (Transitions from dests) =
+        concat
+            [ "[Transitions trFromState="
+            , show from
+            , " trDestinations="
+            , show dests
+            , "]"
+            ]
 
 data Transition m v = Transition {
     trMatrix  :: Maybe (m (Complex v)),
@@ -56,10 +73,12 @@ type ControlCount = QubitId
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
-circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> m a -> (q -> Circ b) -> [Transitions m a]
-circMatrices final _ = treeToTransitions final . circToTree
+circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> m a -> (q -> Circ b) -> Either String [Transitions m a]
+circMatrices final _ circ = do
+    tree <- circToTree circ
+    return $ treeToTransitions final tree
 
-circToTree :: QTuple a => (a -> Circ b) -> CircTree b
+circToTree :: QTuple a => (a -> Circ b) -> Either String (CircTree b)
 circToTree mcirc = tree where
     arg = tupleFromList $ map qubit_of_wire [1..]
     circ = extract_general arity_empty (mcirc arg)

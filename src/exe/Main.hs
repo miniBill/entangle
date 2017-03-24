@@ -77,11 +77,11 @@ root = do
   let code = rCode request
   let type_ = rType request
   let f = concat ["(let ", name, " = ", code, " in ", name, " :: ", type_, ")"]
-  let treeCode = "show $ circToTree " ++ f
+  let treeCode = "either (\"Error: \" ++) show $ circToTree " ++ f
   tree <- useHint treeCode
   let final = if rRecursive request then "recursive" else "nonrecursive"
   let kind = rKind request
-  let qpmcCode = concat ["toQpmc (", show name, ", circMatrices ", final, " ", kind, " ",  f, ")"]
+  let qpmcCode = concat ["either (\"Error: \" ++) id $ fmap (\\cm -> toQpmc (", show name, ", cm)) $ circMatrices ", final, " ", kind, " ",  f]
   qpmc <- useHint qpmcCode
   json $ Response qpmc tree
 
