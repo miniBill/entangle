@@ -13765,18 +13765,29 @@ var _user$project$Quipper$monospaced = _elm_lang$html$Html_Attributes$style(
 		}
 	});
 var _user$project$Quipper$codeRow = function (model) {
-	return A2(
-		_elm_lang$html$Html$span,
+	return _rundis$elm_bootstrap$Bootstrap_Form_Textarea$textarea(
 		{
 			ctor: '::',
-			_0: _user$project$Quipper$monospaced,
-			_1: {ctor: '[]'}
-		},
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html$text(
+			_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$value(
 				_user$project$Quipper$code(model)),
-			_1: {ctor: '[]'}
+			_1: {
+				ctor: '::',
+				_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$rows(10),
+				_1: {
+					ctor: '::',
+					_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$attrs(
+						{
+							ctor: '::',
+							_0: _user$project$Quipper$monospaced,
+							_1: {ctor: '[]'}
+						}),
+					_1: {
+						ctor: '::',
+						_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$disabled,
+						_1: {ctor: '[]'}
+					}
+				}
+			}
 		});
 };
 var _user$project$Quipper$transformCmd = function (model) {
@@ -13873,7 +13884,6 @@ var _user$project$Quipper$Symbolic = {ctor: 'Symbolic'};
 var _user$project$Quipper$Qubits = function (a) {
 	return {ctor: 'Qubits', _0: a};
 };
-var _user$project$Quipper$Recursive = {ctor: 'Recursive'};
 var _user$project$Quipper$init = function (_p5) {
 	var _p6 = _p5;
 	var quipperCode = A2(
@@ -13881,38 +13891,21 @@ var _user$project$Quipper$init = function (_p5) {
 		'\n',
 		{
 			ctor: '::',
-			_0: 'hadamard_at q1',
+			_0: 'reset_at q',
 			_1: {
 				ctor: '::',
-				_0: 'm <- measure q2',
-				_1: {
-					ctor: '::',
-					_0: 'bool <- dynamic_lift m',
-					_1: {
-						ctor: '::',
-						_0: 'if bool',
-						_1: {
-							ctor: '::',
-							_0: '  then gate_X_at q1',
-							_1: {
-								ctor: '::',
-								_0: '  else gate_Z_at q1',
-								_1: {
-									ctor: '::',
-									_0: 'm1 <- measure q1',
-									_1: {
-										ctor: '::',
-										_0: 'exitOn bool',
-										_1: {ctor: '[]'}
-									}
-								}
-							}
-						}
-					}
-				}
+				_0: 'return q',
+				_1: {ctor: '[]'}
 			}
 		});
-	var state = {code: quipperCode, functionName: 'qkdCirc', input: 2, output: _user$project$Quipper$Recursive, kind: _user$project$Quipper$Symbolic, debounceState: _bcardiff$elm_debounce$Debounce$init};
+	var state = {
+		code: quipperCode,
+		functionName: 'resetCirc',
+		input: 1,
+		output: _user$project$Quipper$Qubits(1),
+		kind: _user$project$Quipper$Symbolic,
+		debounceState: _bcardiff$elm_debounce$Debounce$init
+	};
 	return {
 		ctor: '_Tuple2',
 		_0: state,
@@ -13922,6 +13915,7 @@ var _user$project$Quipper$init = function (_p5) {
 			_user$project$Quipper$transformCmd(state))
 	};
 };
+var _user$project$Quipper$Recursive = {ctor: 'Recursive'};
 var _user$project$Quipper$Transform = {ctor: 'Transform'};
 var _user$project$Quipper$Deb = function (a) {
 	return {ctor: 'Deb', _0: a};
@@ -14237,7 +14231,7 @@ var _user$project$Quipper$view = F2(
 											_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$md3,
 											_1: {
 												ctor: '::',
-												_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$lg2,
+												_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$lg3,
 												_1: {ctor: '[]'}
 											}
 										}
@@ -14263,7 +14257,7 @@ var _user$project$Quipper$view = F2(
 												_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$md9,
 												_1: {
 													ctor: '::',
-													_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$lg10,
+													_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$lg9,
 													_1: {ctor: '[]'}
 												}
 											}
