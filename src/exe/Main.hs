@@ -114,10 +114,21 @@ elmJs = $(embedFile "src/exe/elm.js")
 styleCss :: Data.ByteString.ByteString
 styleCss = $(embedFile "src/exe/style.css")
 
+favicons :: [(FilePath, Data.ByteString.ByteString)]
+favicons = $(embedDir "src/exe/favicons")
+
+rawStrict :: Data.ByteString.ByteString -> ActionM ()
+rawStrict = raw . fromStrict
+
 handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
-  get "/" $ raw $ fromStrict indexHtml
-  get "/elm.js" $ raw $ fromStrict elmJs
-  get "/style.css" $ raw $ fromStrict styleCss
+  get "/" . rawStrict $ indexHtml
+  get "/elm.js" . rawStrict $ elmJs
+  get "/style.css" . rawStrict $ styleCss
   post "/" $ root `rescue` text
+  get "/:path" $ do
+    path <- param "path"
+    case [fstring | (fpath, fstring) <- favicons, fpath == path] of
+      []    -> next
+      (x:_) -> rawStrict x
