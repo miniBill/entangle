@@ -3,6 +3,7 @@ extra-package-dbs: []
 packages:
 - '.'
 extra-deps:
+- plugins-1.5.6.0
 - quipper-core-0.8
 explicit-setup-deps:
   easyrender: true

@@ -8,14 +8,14 @@ module Main where
 
 import           Data.Aeson.Types
 import qualified Data.ByteString
-import           Data.ByteString.Lazy         (fromStrict)
+import           Data.ByteString.Lazy        (fromStrict)
 import           Data.FileEmbed
 import           Data.List
-import           Data.Monoid                  ((<>))
-import           Language.Haskell.Interpreter hiding (get)
-import           Network.Wai                  hiding (Request, Response)
+import           Data.Monoid                 ((<>))
+import           Network.Wai                 hiding (Request, Response)
 import           Network.Wai.Middleware.Cors
-import           Web.Scotty                   hiding (request)
+import           System.Eval.Haskell         (eval_)
+import           Web.Scotty                  hiding (request)
 
 data Request = Request {
   rName      :: String,
@@ -45,19 +45,13 @@ instance ToJSON Response where
   toEncoding (Response qpmc tree) =
     pairs ("qpmc" .= qpmc <> "tree" .= tree)
 
-errorString :: InterpreterError -> String
-errorString (WontCompile es) =
+runCode :: String -> ActionM String
+runCode input =
   let
-    unbox (GhcError e) = e
-  in
-    intercalate "\n" ("ERROR: Won't compile:" : map unbox es)
-errorString e = show e
-
-useHint :: String -> ActionM String
-useHint input =
-  let
-    result = runInterpreter $ do
-      setImports
+    result :: IO (Either [String] (Maybe String))
+    result =
+      eval_
+        input
         [ "Prelude"
         , "Quipper"
         , "Transitions"
@@ -66,9 +60,19 @@ useHint input =
         , "SymbolicMatrix"
         , "Data.Matrix"
         ]
-      interpret input ""
+        [] [] []
   in
-    liftAndCatchIO $ either errorString id <$> result
+    liftAndCatchIO $
+    fmap
+      (\r -> case r of
+        Left errors ->
+          intercalate "\n" errors
+        (Right Nothing) ->
+          "Wrong type?"
+        (Right (Just s)) ->
+          s
+      )
+      result
 
 root :: ActionM ()
 root = do
@@ -78,11 +82,11 @@ root = do
   let type_ = rType request
   let f = concat ["(let ", name, " = ", code, " in ", name, " :: ", type_, ")"]
   let treeCode = "either (\"Error: \" ++) show $ circToTree " ++ f
-  tree <- useHint treeCode
+  tree <- runCode treeCode
   let final = if rRecursive request then "recursive" else "nonrecursive"
   let kind = rKind request
   let qpmcCode = concat ["either (\"Error: \" ++) id $ fmap (\\cm -> toQpmc (", show name, ", cm)) $ circMatrices ", final, " ", kind, " ",  f]
-  qpmc <- useHint qpmcCode
+  qpmc <- runCode qpmcCode
   json $ Response qpmc tree
 
 corsResourcePolicy :: CorsResourcePolicy
