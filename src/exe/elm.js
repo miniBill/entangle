@@ -14421,93 +14421,12 @@ var _user$project$Main$init = function () {
 	};
 }();
 var _user$project$Main$view = function (model) {
-	var downloadLink = F2(
-		function (filename, property) {
-			return A2(
-				_rundis$elm_bootstrap$Bootstrap_Button$linkButton,
-				{
-					ctor: '::',
-					_0: _rundis$elm_bootstrap$Bootstrap_Button$primary,
-					_1: {
-						ctor: '::',
-						_0: _rundis$elm_bootstrap$Bootstrap_Button$attrs(
-							{
-								ctor: '::',
-								_0: function () {
-									var encoded = A2(
-										_elm_lang$core$Result$withDefault,
-										'',
-										_truqu$elm_base64$Base64$encode(
-											property(model)));
-									var head = 'data:application/force-download;charset=UTF-8;base64,';
-									var url = A2(_elm_lang$core$Basics_ops['++'], head, encoded);
-									return _elm_lang$html$Html_Attributes$href(url);
-								}(),
-								_1: {
-									ctor: '::',
-									_0: A2(_elm_lang$html$Html_Attributes$attribute, 'download', filename),
-									_1: {ctor: '[]'}
-								}
-							}),
-						_1: {ctor: '[]'}
-					}
-				},
-				{
-					ctor: '::',
-					_0: _elm_lang$html$Html$text('Download'),
-					_1: {ctor: '[]'}
-				});
-		});
-	var viewCard = function (_p1) {
-		var _p2 = _p1;
-		return _rundis$elm_bootstrap$Bootstrap_Card$view(
-			A3(
-				_rundis$elm_bootstrap$Bootstrap_Card$footer,
-				{ctor: '[]'},
-				{
-					ctor: '::',
-					_0: A2(downloadLink, _p2._2, _p2._3),
-					_1: {ctor: '[]'}
-				},
-				A3(
-					_rundis$elm_bootstrap$Bootstrap_Card$block,
-					{ctor: '[]'},
-					{
-						ctor: '::',
-						_0: A2(
-							_rundis$elm_bootstrap$Bootstrap_Card$text,
-							{ctor: '[]'},
-							{
-								ctor: '::',
-								_0: _p2._1(model),
-								_1: {ctor: '[]'}
-							}),
-						_1: {ctor: '[]'}
-					},
-					A3(
-						_rundis$elm_bootstrap$Bootstrap_Card$headerH3,
-						{
-							ctor: '::',
-							_0: _elm_lang$html$Html_Attributes$class('text-center'),
-							_1: {ctor: '[]'}
-						},
-						{
-							ctor: '::',
-							_0: _elm_lang$html$Html$text(_p2._0),
-							_1: {ctor: '[]'}
-						},
-						_rundis$elm_bootstrap$Bootstrap_Card$config(
-							{ctor: '[]'})))));
-	};
 	var qpmcCard = {
-		ctor: '_Tuple6',
-		_0: 'QPMC',
-		_1: _user$project$Main$qpmcView,
-		_2: 'output.qpmc',
-		_3: function (_) {
-			return _.qpmc;
-		},
-		_4: {
+		name: 'QPMC',
+		view: _user$project$Main$qpmcView,
+		extension: 'qpmc',
+		content: model.qpmc,
+		width: {
 			ctor: '::',
 			_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$xs12,
 			_1: {
@@ -14524,21 +14443,18 @@ var _user$project$Main$view = function (model) {
 				}
 			}
 		},
-		_5: {
+		classes: {
 			ctor: '::',
 			_0: 'flex-md-last',
 			_1: {ctor: '[]'}
 		}
 	};
 	var treeCard = {
-		ctor: '_Tuple6',
-		_0: 'Tree',
-		_1: _user$project$Main$treeView,
-		_2: 'tree.log',
-		_3: function (_) {
-			return _.tree;
-		},
-		_4: {
+		name: 'Tree',
+		view: _user$project$Main$treeView,
+		extension: 'log',
+		content: model.tree,
+		width: {
 			ctor: '::',
 			_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$xs12,
 			_1: {
@@ -14551,7 +14467,7 @@ var _user$project$Main$view = function (model) {
 				}
 			}
 		},
-		_5: {
+		classes: {
 			ctor: '::',
 			_0: 'flex-last',
 			_1: {
@@ -14562,17 +14478,11 @@ var _user$project$Main$view = function (model) {
 		}
 	};
 	var quipperCard = {
-		ctor: '_Tuple6',
-		_0: 'Quipper',
-		_1: _user$project$Quipper$view(_user$project$Main$quipperCfg),
-		_2: 'Main.hs',
-		_3: function (_p3) {
-			return _user$project$Quipper$code(
-				function (_) {
-					return _.quipperState;
-				}(_p3));
-		},
-		_4: {
+		name: 'Quipper',
+		view: _user$project$Quipper$view(_user$project$Main$quipperCfg),
+		extension: 'hs',
+		content: _user$project$Quipper$code(model.quipperState),
+		width: {
 			ctor: '::',
 			_0: _rundis$elm_bootstrap$Bootstrap_Grid_Col$xs12,
 			_1: {
@@ -14589,7 +14499,7 @@ var _user$project$Main$view = function (model) {
 				}
 			}
 		},
-		_5: {
+		classes: {
 			ctor: '::',
 			_0: 'flex-first',
 			_1: {ctor: '[]'}
@@ -14616,11 +14526,91 @@ var _user$project$Main$view = function (model) {
 			_1: {ctor: '[]'}
 		}
 	};
+	var basename = model.quipperState.functionName;
+	var downloadLink = function (description) {
+		return A2(
+			_rundis$elm_bootstrap$Bootstrap_Button$linkButton,
+			{
+				ctor: '::',
+				_0: _rundis$elm_bootstrap$Bootstrap_Button$primary,
+				_1: {
+					ctor: '::',
+					_0: _rundis$elm_bootstrap$Bootstrap_Button$attrs(
+						{
+							ctor: '::',
+							_0: function () {
+								var encoded = A2(
+									_elm_lang$core$Result$withDefault,
+									'',
+									_truqu$elm_base64$Base64$encode(description.content));
+								var head = 'data:application/force-download;charset=UTF-8;base64,';
+								var url = A2(_elm_lang$core$Basics_ops['++'], head, encoded);
+								return _elm_lang$html$Html_Attributes$href(url);
+							}(),
+							_1: {
+								ctor: '::',
+								_0: A2(
+									_elm_lang$html$Html_Attributes$attribute,
+									'download',
+									A2(
+										_elm_lang$core$Basics_ops['++'],
+										basename,
+										A2(_elm_lang$core$Basics_ops['++'], '.', description.extension))),
+								_1: {ctor: '[]'}
+							}
+						}),
+					_1: {ctor: '[]'}
+				}
+			},
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html$text('Download'),
+				_1: {ctor: '[]'}
+			});
+	};
+	var viewCard = function (description) {
+		return _rundis$elm_bootstrap$Bootstrap_Card$view(
+			A3(
+				_rundis$elm_bootstrap$Bootstrap_Card$footer,
+				{ctor: '[]'},
+				{
+					ctor: '::',
+					_0: downloadLink(description),
+					_1: {ctor: '[]'}
+				},
+				A3(
+					_rundis$elm_bootstrap$Bootstrap_Card$block,
+					{ctor: '[]'},
+					{
+						ctor: '::',
+						_0: A2(
+							_rundis$elm_bootstrap$Bootstrap_Card$text,
+							{ctor: '[]'},
+							{
+								ctor: '::',
+								_0: description.view(model),
+								_1: {ctor: '[]'}
+							}),
+						_1: {ctor: '[]'}
+					},
+					A3(
+						_rundis$elm_bootstrap$Bootstrap_Card$headerH3,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Attributes$class('text-center'),
+							_1: {ctor: '[]'}
+						},
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html$text(description.name),
+							_1: {ctor: '[]'}
+						},
+						_rundis$elm_bootstrap$Bootstrap_Card$config(
+							{ctor: '[]'})))));
+	};
 	var rows = A2(
 		_elm_lang$core$List$map,
-		function (_p4) {
-			var _p5 = _p4;
-			var _p6 = _p5._4;
+		function (description) {
 			return A2(
 				_rundis$elm_bootstrap$Bootstrap_Grid$col,
 				{
@@ -14634,15 +14624,14 @@ var _user$project$Main$view = function (model) {
 									function (c) {
 										return {ctor: '_Tuple2', _0: c, _1: true};
 									},
-									{ctor: '::', _0: 'mt-4', _1: _p5._5})),
+									{ctor: '::', _0: 'mt-4', _1: description.classes})),
 							_1: {ctor: '[]'}
 						}),
-					_1: _p6
+					_1: description.width
 				},
 				{
 					ctor: '::',
-					_0: viewCard(
-						{ctor: '_Tuple5', _0: _p5._0, _1: _p5._1, _2: _p5._2, _3: _p5._3, _4: _p6}),
+					_0: viewCard(description),
 					_1: {ctor: '[]'}
 				});
 		},
@@ -14661,25 +14650,25 @@ var _user$project$Main$view = function (model) {
 };
 var _user$project$Main$update = F2(
 	function (msg, model) {
-		var _p7 = msg;
-		switch (_p7.ctor) {
+		var _p1 = msg;
+		switch (_p1.ctor) {
 			case 'Quipper':
-				return A3(_user$project$Quipper$update, _user$project$Main$quipperCfg, _p7._0, model);
+				return A3(_user$project$Quipper$update, _user$project$Main$quipperCfg, _p1._0, model);
 			case 'ShowTree':
 				return {
 					ctor: '_Tuple2',
 					_0: _elm_lang$core$Native_Utils.update(
 						model,
-						{showTree: _p7._0}),
+						{showTree: _p1._0}),
 					_1: _elm_lang$core$Platform_Cmd$none
 				};
 			default:
 				var get = function (p) {
-					var _p8 = A2(_elm_lang$core$Result$map, p, _p7._0);
-					if (_p8.ctor === 'Ok') {
-						return _p8._0;
+					var _p2 = A2(_elm_lang$core$Result$map, p, _p1._0);
+					if (_p2.ctor === 'Ok') {
+						return _p2._0;
 					} else {
-						return _elm_lang$core$Basics$toString(_p8._0);
+						return _elm_lang$core$Basics$toString(_p2._0);
 					}
 				};
 				return {
