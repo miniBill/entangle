@@ -65,55 +65,61 @@ init =
 view : Model -> Html Msg
 view model =
     let
+        basename =
+            model.quipperState.functionName
+
         quipperCard =
-            ( "Quipper"
-            , Quipper.view quipperCfg
-            , "Main.hs"
-            , .quipperState >> Quipper.code
-            , [ Col.xs12
-              , if model.showTree then
+            { name = "Quipper"
+            , view = Quipper.view quipperCfg
+            , extension = "hs"
+            , content = Quipper.code model.quipperState
+            , width =
+                [ Col.xs12
+                , if model.showTree then
                     Col.md6
-                else
+                  else
                     Col.md12
-              , Col.lg6
-              , if model.showTree then
+                , Col.lg6
+                , if model.showTree then
                     Col.xl4
-                else
+                  else
                     Col.xl6
-              ]
-            , [ "flex-first" ]
-            )
+                ]
+            , classes = [ "flex-first" ]
+            }
 
         treeCard =
-            ( "Tree"
-            , treeView
-            , "tree.log"
-            , .tree
-            , [ Col.xs12
-              , Col.md6
-              , Col.xl4
-              ]
-            , [ "flex-last", "flex-md-unordered" ]
-            )
+            { name = "Tree"
+            , view = treeView
+            , extension = "log"
+            , content = model.tree
+            , width =
+                [ Col.xs12
+                , Col.md6
+                , Col.xl4
+                ]
+            , classes = [ "flex-last", "flex-md-unordered" ]
+            }
 
         qpmcCard =
-            ( "QPMC"
-            , qpmcView
-            , "output.qpmc"
-            , .qpmc
-            , [ Col.xs12
-              , Col.md12
-              , if model.showTree then
+            { name = "QPMC"
+            , view = qpmcView
+            , extension = "qpmc"
+            , content = model.qpmc
+            , width =
+                [ Col.xs12
+                , Col.md12
+                , if model.showTree then
                     Col.lg12
-                else
+                  else
                     Col.lg6
-              , if model.showTree then
+                , if model.showTree then
                     Col.xl4
-                else
+                  else
                     Col.xl6
-              ]
-            , [ "flex-md-last" ]
-            )
+                ]
+            , classes = [ "flex-md-last" ]
+            }
 
         cardDescriptions =
             if model.showTree then
@@ -128,31 +134,31 @@ view model =
 
         rows =
             List.map
-                (\( name, subview, filename, property, width, classes ) ->
+                (\description ->
                     Grid.col
                         (Col.attrs
-                            [ ("mt-4" :: classes)
+                            [ ("mt-4" :: description.classes)
                                 |> List.map (\c -> ( c, True ))
                                 |> classList
                             ]
-                            :: width
+                            :: description.width
                         )
-                        [ viewCard ( name, subview, filename, property, width ) ]
+                        [ viewCard description ]
                 )
                 cardDescriptions
 
-        viewCard ( name, subview, filename, property, width ) =
+        viewCard description =
             Card.config []
                 |> Card.headerH3
                     [ class "text-center" ]
-                    [ text name ]
+                    [ text description.name ]
                 |> Card.block []
-                    [ Card.text [] [ subview model ] ]
+                    [ Card.text [] [ description.view model ] ]
                 |> Card.footer []
-                    [ downloadLink filename property ]
+                    [ downloadLink description ]
                 |> Card.view
 
-        downloadLink filename property =
+        downloadLink description =
             Button.linkButton
                 [ Button.primary
                 , Button.attrs
@@ -164,10 +170,10 @@ view model =
                             "data:application/force-download;charset=UTF-8;base64,"
 
                         encoded =
-                            Result.withDefault "" <| Base64.encode (property model)
+                            Result.withDefault "" <| Base64.encode description.content
                       in
                         href url
-                    , attribute "download" filename
+                    , attribute "download" <| basename ++ "." ++ description.extension
                     ]
                 ]
                 [ text "Download" ]
