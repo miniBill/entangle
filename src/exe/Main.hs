@@ -120,6 +120,12 @@ favicons = $(embedDir "src/exe/favicons")
 rawStrict :: Data.ByteString.ByteString -> ActionM ()
 rawStrict = raw . fromStrict
 
+endsWith :: Eq a => [a] -> [a] -> Bool
+endsWith x y = reverse x `startsWith` reverse y
+
+startsWith :: Eq a => [a] -> [a] -> Bool
+startsWith x y = and $ zipWith (==) x y
+
 handler :: ScottyM ()
 handler = do
   middleware $ cors (const $ Just corsResourcePolicy)
@@ -129,6 +135,6 @@ handler = do
   post "/" $ root `rescue` text
   get "/:path" $ do
     path <- param "path"
-    case [fstring | (fpath, fstring) <- favicons, fpath == path] of
+    case [fstring | (fpath, fstring) <- favicons,  fpath `endsWith` path] of
       []    -> next
       (x:_) -> rawStrict x
