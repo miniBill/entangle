@@ -121,16 +121,12 @@ transformCmd model =
         url =
             "http://localhost:3113"
 
-        code =
-            ("\\" ++ qtuple model.input ++ " -> (do; " ++ model.code ++ ")")
-                |> Regex.replace Regex.All (Regex.regex "\n") (always "; ")
-
         body =
             Http.jsonBody <|
                 Encode.object
                     [ ( "name", Encode.string model.functionName )
                     , ( "type", Encode.string <| signature model )
-                    , ( "code", Encode.string code )
+                    , ( "code", Encode.string <| code model )
                     , ( "recursive", Encode.bool <| isRecursive model.output )
                     , ( "kind"
                       , Encode.string <|
