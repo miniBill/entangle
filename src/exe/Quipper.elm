@@ -22,6 +22,7 @@ type alias State =
     , output : Output
     , code : String
     , kind : Kind
+    , additional : String
     , debounceState : Debounce.State
     }
 
@@ -42,6 +43,7 @@ type Msg
     | Input Int
     | Output Output
     | Kind Kind
+    | Additional String
     | Deb (Debounce.Msg Msg)
     | Transform
 
@@ -103,6 +105,9 @@ update (Config getter setter lift result) msg model =
 
             Kind kind ->
                 trans { qmodel | kind = kind }
+
+            Additional additional ->
+                trans { qmodel | additional = additional }
 
             Deb a ->
                 let
@@ -170,6 +175,7 @@ init (Config _ _ _ result) =
             , input = 1
             , output = Qubits 1
             , kind = Symbolic
+            , additional = ""
             , debounceState = Debounce.init
             }
     in
@@ -231,7 +237,7 @@ view : Config model msg -> model -> Html msg
 view (Config getter _ lift _) model =
     let
         rowsHead =
-            [ ( "Name", nameRow )
+            [ ( "Function name", nameRow )
             , ( "Input qubits", inputRow )
             , ( "Recursive", recursiveRow )
             ]
@@ -246,7 +252,8 @@ view (Config getter _ lift _) model =
 
         rowsTail =
             [ ( "Kind", kindRow )
-            , ( "Body", bodyRow )
+            , ( "Function body", bodyRow )
+            , ( "Additional code", additionalRow )
             , ( "Code", codeRow )
             ]
 
@@ -339,6 +346,16 @@ bodyRow model =
         ]
 
 
+additionalRow : State -> Html Msg
+additionalRow model =
+    Textarea.textarea
+        [ Textarea.value model.additional
+        , Textarea.onInput Additional
+        , Textarea.rows 10
+        , Textarea.attrs [ monospaced ]
+        ]
+
+
 codeRow : State -> Html Msg
 codeRow model =
     Textarea.textarea
@@ -375,4 +392,6 @@ code model =
         , model.functionName ++ " " ++ qtuple model.input ++ " = do"
         , ("  " ++ model.code)
             |> Regex.replace Regex.All (Regex.regex "\n") (always "\n  ")
+        , ""
+        , model.additional
         ]
