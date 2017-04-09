@@ -13749,7 +13749,15 @@ var _user$project$Quipper$code = function (model) {
 						_elm_lang$core$Regex$regex('\n'),
 						_elm_lang$core$Basics$always('\n  '),
 						A2(_elm_lang$core$Basics_ops['++'], '  ', model.code)),
-					_1: {ctor: '[]'}
+					_1: {
+						ctor: '::',
+						_0: '',
+						_1: {
+							ctor: '::',
+							_0: model.additional,
+							_1: {ctor: '[]'}
+						}
+					}
 				}
 			}
 		});
@@ -13799,21 +13807,6 @@ var _user$project$Quipper$transformCmd = function (model) {
 			}),
 		A2(_elm_lang$core$Json_Decode$field, 'qpmc', _elm_lang$core$Json_Decode$string),
 		A2(_elm_lang$core$Json_Decode$field, 'tree', _elm_lang$core$Json_Decode$string));
-	var code = A4(
-		_elm_lang$core$Regex$replace,
-		_elm_lang$core$Regex$All,
-		_elm_lang$core$Regex$regex('\n'),
-		_elm_lang$core$Basics$always('; '),
-		A2(
-			_elm_lang$core$Basics_ops['++'],
-			'\\',
-			A2(
-				_elm_lang$core$Basics_ops['++'],
-				_user$project$Quipper$qtuple(model.input),
-				A2(
-					_elm_lang$core$Basics_ops['++'],
-					' -> (do; ',
-					A2(_elm_lang$core$Basics_ops['++'], model.code, ')')))));
 	var body = _elm_lang$http$Http$jsonBody(
 		_elm_lang$core$Json_Encode$object(
 			{
@@ -13836,7 +13829,8 @@ var _user$project$Quipper$transformCmd = function (model) {
 						_0: {
 							ctor: '_Tuple2',
 							_0: 'code',
-							_1: _elm_lang$core$Json_Encode$string(code)
+							_1: _elm_lang$core$Json_Encode$string(
+								_user$project$Quipper$code(model))
 						},
 						_1: {
 							ctor: '::',
@@ -13871,9 +13865,9 @@ var _user$project$Quipper$transformCmd = function (model) {
 	var request = A3(_elm_lang$http$Http$post, url, body, decoder);
 	return A2(_elm_lang$http$Http$send, _elm_lang$core$Basics$identity, request);
 };
-var _user$project$Quipper$State = F6(
-	function (a, b, c, d, e, f) {
-		return {functionName: a, input: b, output: c, code: d, kind: e, debounceState: f};
+var _user$project$Quipper$State = F7(
+	function (a, b, c, d, e, f, g) {
+		return {functionName: a, input: b, output: c, code: d, kind: e, additional: f, debounceState: g};
 	});
 var _user$project$Quipper$Response = F2(
 	function (a, b) {
@@ -13904,6 +13898,7 @@ var _user$project$Quipper$init = function (_p5) {
 		input: 1,
 		output: _user$project$Quipper$Qubits(1),
 		kind: _user$project$Quipper$Symbolic,
+		additional: '',
 		debounceState: _bcardiff$elm_debounce$Debounce$init
 	};
 	return {
@@ -13978,6 +13973,11 @@ var _user$project$Quipper$update = F3(
 					_elm_lang$core$Native_Utils.update(
 						qmodel,
 						{kind: _p9._0}));
+			case 'Additional':
+				return trans(
+					_elm_lang$core$Native_Utils.update(
+						qmodel,
+						{additional: _p9._0}));
 			case 'Deb':
 				var _p10 = A3(_bcardiff$elm_debounce$Debounce$update, _user$project$Quipper$debounceCfg, _p9._0, qmodel);
 				var qmodel_ = _p10._0;
@@ -13998,6 +13998,34 @@ var _user$project$Quipper$update = F3(
 				};
 		}
 	});
+var _user$project$Quipper$Additional = function (a) {
+	return {ctor: 'Additional', _0: a};
+};
+var _user$project$Quipper$additionalRow = function (model) {
+	return _rundis$elm_bootstrap$Bootstrap_Form_Textarea$textarea(
+		{
+			ctor: '::',
+			_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$value(model.additional),
+			_1: {
+				ctor: '::',
+				_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$onInput(_user$project$Quipper$Additional),
+				_1: {
+					ctor: '::',
+					_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$rows(10),
+					_1: {
+						ctor: '::',
+						_0: _rundis$elm_bootstrap$Bootstrap_Form_Textarea$attrs(
+							{
+								ctor: '::',
+								_0: _user$project$Quipper$monospaced,
+								_1: {ctor: '[]'}
+							}),
+						_1: {ctor: '[]'}
+					}
+				}
+			}
+		});
+};
 var _user$project$Quipper$Kind = function (a) {
 	return {ctor: 'Kind', _0: a};
 };
@@ -14165,11 +14193,15 @@ var _user$project$Quipper$view = F2(
 			_0: {ctor: '_Tuple2', _0: 'Kind', _1: _user$project$Quipper$kindRow},
 			_1: {
 				ctor: '::',
-				_0: {ctor: '_Tuple2', _0: 'Body', _1: _user$project$Quipper$bodyRow},
+				_0: {ctor: '_Tuple2', _0: 'Function body', _1: _user$project$Quipper$bodyRow},
 				_1: {
 					ctor: '::',
-					_0: {ctor: '_Tuple2', _0: 'Code', _1: _user$project$Quipper$codeRow},
-					_1: {ctor: '[]'}
+					_0: {ctor: '_Tuple2', _0: 'Additional code', _1: _user$project$Quipper$additionalRow},
+					_1: {
+						ctor: '::',
+						_0: {ctor: '_Tuple2', _0: 'Code', _1: _user$project$Quipper$codeRow},
+						_1: {ctor: '[]'}
+					}
 				}
 			}
 		};
@@ -14187,7 +14219,7 @@ var _user$project$Quipper$view = F2(
 		}();
 		var rowsHead = {
 			ctor: '::',
-			_0: {ctor: '_Tuple2', _0: 'Name', _1: _user$project$Quipper$nameRow},
+			_0: {ctor: '_Tuple2', _0: 'Function name', _1: _user$project$Quipper$nameRow},
 			_1: {
 				ctor: '::',
 				_0: {ctor: '_Tuple2', _0: 'Input qubits', _1: _user$project$Quipper$inputRow},
