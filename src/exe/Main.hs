@@ -73,7 +73,7 @@ useHint input exprs =
     useFile path handle = do
       hPutStrLn handle "module Interpreted where"
       hPutStrLn handle ""
-      let imports = [ "Prelude", "Quipper"]
+      let imports = [ "Prelude", "Quipper", "Qpmc"]
       forM_ imports $ \i -> hPutStrLn handle ("import " ++ i)
       hPutStrLn handle ""
       hPutStrLn handle "reset_at :: Qubit -> Circ ()"
