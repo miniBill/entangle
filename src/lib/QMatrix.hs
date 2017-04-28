@@ -43,6 +43,12 @@ class (Num a, Num (m a)) => QMatrix m a where
         pauliXMatrix 2 1 = 1
         pauliXMatrix _ _ = 0
 
+    -- |pauliY is the Pauli X matrix (Not)
+    pauliY :: m a
+    pauliY = matrix 2 2 pauliYMatrix where
+        pauliYMatrix 1 2 = -i
+        pauliYMatrix 2 1 = i
+        pauliYMatrix _ _ = 0
     -- |pauliZ is the Pauli Z matrix
     pauliZ :: m a
     pauliZ = matrix 2 2 pauliZMatrix where

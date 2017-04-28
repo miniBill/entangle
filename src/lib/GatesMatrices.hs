@@ -12,6 +12,7 @@ import           QMatrix
 nameToMatrix :: (QCMatrix m a, Floating a, Fractional a) => String -> m (Complex a)
 nameToMatrix "not"  = pauliX
 nameToMatrix "X"    = pauliX
+nameToMatrix "Y"    = pauliY
 nameToMatrix "Z"    = pauliZ
 nameToMatrix "H"    = hadamard
 nameToMatrix "W"    = swapSqrt
