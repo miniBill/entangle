@@ -97,6 +97,7 @@ class (Fractional a, Floating a, QMatrix m (Complex a)) => QCMatrix m a where
         phaseShiftMatrix 2 2 = exp $ ii * (phi :+ 0)
         phaseShiftMatrix _ _ = 0
 
+
 downcast :: Integer -> Int
 downcast x
     | x > fromIntegral (maxBound :: Int) = error "Overflow!"

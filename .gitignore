@@ -10,3 +10,17 @@ src/doc
 .DS_Store
 .cabal-sandbox
 cabal.sandbox.config
+src/octave-workspace
+src/Main-mod.hs
+
+octave-workspace
+
+*.txt
+
+*.pdf
+
+Switch/and
+
+Switch/and.hs
+
+Switch/switch.hs

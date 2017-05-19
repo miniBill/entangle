@@ -19,6 +19,7 @@ data StandardMatrix a where
     Hadamard :: StandardMatrix a
     PauliX :: StandardMatrix a
     PauliZ :: StandardMatrix a
+    PauliY :: StandardMatrix (Complex a)
     -- ControlNot :: StandardMatrix a
     Swap :: StandardMatrix a
     PhaseShift :: a -> StandardMatrix (Complex a)
@@ -32,20 +33,22 @@ data SymbolicMatrix a
     | Kronecker (SymbolicMatrix a) (SymbolicMatrix a)
 
 instance Show (StandardMatrix a) where
-    show (Identity i) = "identity(" ++ show i ++ ")"
+    show (Identity i) = "ID(" ++ show i ++ ")"
     show Hadamard     = "Hadamard"
     show PauliX       = "PauliX"
     show PauliZ       = "PauliZ"
+    show PauliY       = "PauliY"
     --show ControlNot     = "CNOT"
     show Swap         = "Swap"
     show (Measure UL) = "M0"
     show (Measure BR) = "M1"
 
 instance Show a => Show (StandardMatrix (Complex a)) where
-    show (Identity i)   = "identity(" ++ show i ++ ")"
+    show (Identity i)   = "ID(" ++ show i ++ ")"
     show Hadamard       = "Hadamard"
     show PauliX         = "PauliX"
     show PauliZ         = "PauliZ"
+    show PauliY         = "PauliY"
     --show ControlNot     = "CNOT"
     show Swap           = "Swap"
     show (Measure UL)   = "M0"
@@ -157,6 +160,9 @@ liftEvalE rf cf vf xa@(ExplodedMatrix ra ca _) xb@(ExplodedMatrix rb cb _) =
 instance (Floating a, Fractional a) => QCMatrix SymbolicMatrix a where
     phaseShift t = StandardMatrix $ PhaseShift t
 
+instance Floating a => QCMatrix SymbolicMatrix (Complex a) where
+    pauliY = StandardMatrix PauliY
+
 eval :: (Floating a, QMatrix m a) => SymbolicMatrix a -> m a
 eval (Zero r c) = zero r c
 eval (Matrix r c f) = matrix r c f
@@ -175,6 +181,7 @@ evalC (Zero r c) = zero r c
 evalC (Matrix r c f) = matrix r c f
 evalC (Kronecker a b) = kronecker (evalC a) (evalC b)
 evalC (Multiply a b) = evalC a * evalC b
+evalC (StandardMatrix (PauliY))       = pauliY
 evalC (StandardMatrix (PhaseShift d)) = phaseShift d
 evalC (StandardMatrix m) = evalC' m where
     evalC' (Identity i) = identity i

@@ -3,12 +3,12 @@ body {
 }
 
 .form-control {
-    background-color: #58D7AD;
+    background-color: #c1f0e1;
 }
 
 .form-control:disabled {
     color: black;
-    background-color: #00A46E;
+    background-color: #c1f0e1;
 }
 
 .card {
