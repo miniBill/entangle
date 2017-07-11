@@ -13595,34 +13595,51 @@ var _truqu$elm_base64$Base64$toCharList = function (bitList) {
 	};
 	return A2(_elm_lang$core$List$concatMap, toChars, bitList);
 };
-var _truqu$elm_base64$Base64$toTupleList = function (list) {
-	var _p6 = list;
-	if (_p6.ctor === '::') {
-		if (_p6._1.ctor === '::') {
-			if (_p6._1._1.ctor === '::') {
-				return {
-					ctor: '::',
-					_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: _p6._1._1._0},
-					_1: _truqu$elm_base64$Base64$toTupleList(_p6._1._1._1)
-				};
-			} else {
-				return {
-					ctor: '::',
-					_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: -1},
-					_1: {ctor: '[]'}
-				};
+var _truqu$elm_base64$Base64$toTupleList = function () {
+	var toTupleListHelp = F2(
+		function (acc, list) {
+			toTupleListHelp:
+			while (true) {
+				var _p6 = list;
+				if (_p6.ctor === '::') {
+					if (_p6._1.ctor === '::') {
+						if (_p6._1._1.ctor === '::') {
+							var _v5 = {
+								ctor: '::',
+								_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: _p6._1._1._0},
+								_1: acc
+							},
+								_v6 = _p6._1._1._1;
+							acc = _v5;
+							list = _v6;
+							continue toTupleListHelp;
+						} else {
+							return {
+								ctor: '::',
+								_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: -1},
+								_1: acc
+							};
+						}
+					} else {
+						return {
+							ctor: '::',
+							_0: {ctor: '_Tuple3', _0: _p6._0, _1: -1, _2: -1},
+							_1: acc
+						};
+					}
+				} else {
+					return acc;
+				}
 			}
-		} else {
-			return {
-				ctor: '::',
-				_0: {ctor: '_Tuple3', _0: _p6._0, _1: -1, _2: -1},
-				_1: {ctor: '[]'}
-			};
-		}
-	} else {
-		return {ctor: '[]'};
-	}
-};
+		});
+	return function (_p7) {
+		return _elm_lang$core$List$reverse(
+			A2(
+				toTupleListHelp,
+				{ctor: '[]'},
+				_p7));
+	};
+}();
 var _truqu$elm_base64$Base64$toCodeList = function (string) {
 	return A2(
 		_elm_lang$core$List$map,
@@ -13863,7 +13880,25 @@ var _user$project$Quipper$transformCmd = function (model) {
 			}));
 	var url = 'http://localhost:3113';
 	var request = A3(_elm_lang$http$Http$post, url, body, decoder);
-	return A2(_elm_lang$http$Http$send, _elm_lang$core$Basics$identity, request);
+	return A2(
+		_elm_lang$core$Task$attempt,
+		_elm_lang$core$Basics$identity,
+		A2(
+			_elm_lang$core$Task$andThen,
+			function (startTime) {
+				return A2(
+					_elm_lang$core$Task$andThen,
+					function (response) {
+						return A2(
+							_elm_lang$core$Task$map,
+							function (endTime) {
+								return {ctor: '_Tuple2', _0: response, _1: endTime - startTime};
+							},
+							_elm_lang$core$Time$now);
+					},
+					_elm_lang$http$Http$toTask(request));
+			},
+			_elm_lang$core$Time$now));
 };
 var _user$project$Quipper$State = F7(
 	function (a, b, c, d, e, f, g) {
@@ -14356,9 +14391,9 @@ var _user$project$Main$codeArea = function (value) {
 			}
 		});
 };
-var _user$project$Main$Model = F4(
-	function (a, b, c, d) {
-		return {quipperState: a, showTree: b, tree: c, qpmc: d};
+var _user$project$Main$Model = F5(
+	function (a, b, c, d, e) {
+		return {quipperState: a, showTree: b, tree: c, qpmc: d, elapsed: e};
 	});
 var _user$project$Main$TransformResult = function (a) {
 	return {ctor: 'TransformResult', _0: a};
@@ -14412,15 +14447,37 @@ var _user$project$Main$qpmcView = function (model) {
 				{ctor: '[]'},
 				model.showTree ? {
 					ctor: '::',
-					_0: _user$project$Main$codeArea(model.qpmc),
-					_1: {ctor: '[]'}
-				} : {
-					ctor: '::',
-					_0: _user$project$Main$treeCheckbox(model),
+					_0: _elm_lang$html$Html$text(model.elapsed),
 					_1: {
 						ctor: '::',
-						_0: _user$project$Main$codeArea(model.qpmc),
-						_1: {ctor: '[]'}
+						_0: A2(
+							_elm_lang$html$Html$br,
+							{ctor: '[]'},
+							{ctor: '[]'}),
+						_1: {
+							ctor: '::',
+							_0: _user$project$Main$codeArea(model.qpmc),
+							_1: {ctor: '[]'}
+						}
+					}
+				} : {
+					ctor: '::',
+					_0: _elm_lang$html$Html$text(model.elapsed),
+					_1: {
+						ctor: '::',
+						_0: A2(
+							_elm_lang$html$Html$br,
+							{ctor: '[]'},
+							{ctor: '[]'}),
+						_1: {
+							ctor: '::',
+							_0: _user$project$Main$treeCheckbox(model),
+							_1: {
+								ctor: '::',
+								_0: _user$project$Main$codeArea(model.qpmc),
+								_1: {ctor: '[]'}
+							}
+						}
 					}
 				}),
 			_1: {ctor: '[]'}
@@ -14448,7 +14505,7 @@ var _user$project$Main$init = function () {
 	var quipperCmd = _p0._1;
 	return {
 		ctor: '_Tuple2',
-		_0: {quipperState: quipperState, showTree: true, tree: '', qpmc: ''},
+		_0: {quipperState: quipperState, showTree: true, tree: '', qpmc: '', elapsed: ''},
 		_1: quipperCmd
 	};
 }();
@@ -14709,12 +14766,30 @@ var _user$project$Main$update = F2(
 						model,
 						{
 							qpmc: get(
-								function (_) {
-									return _.qpmc;
+								function (_p3) {
+									return function (_) {
+										return _.qpmc;
+									}(
+										_elm_lang$core$Tuple$first(_p3));
+								}),
+							elapsed: get(
+								function (_p4) {
+									var _p5 = _p4;
+									return A2(
+										_elm_lang$core$Basics_ops['++'],
+										'Elapsed time: ',
+										A2(
+											_elm_lang$core$Basics_ops['++'],
+											_elm_lang$core$Basics$toString(
+												_elm_lang$core$Time$inSeconds(_p5._1)),
+											's'));
 								}),
 							tree: get(
-								function (_) {
-									return _.tree;
+								function (_p6) {
+									return function (_) {
+										return _.tree;
+									}(
+										_elm_lang$core$Tuple$first(_p6));
 								})
 						}),
 					_1: _elm_lang$core$Platform_Cmd$none

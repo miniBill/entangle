@@ -1,8 +1,5 @@
 module Main exposing (main)
 
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Http
 import Base64
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
@@ -11,7 +8,11 @@ import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Http
 import Quipper
+import Time exposing (Time)
 
 
 main : Program Never Model Msg
@@ -29,13 +30,14 @@ type alias Model =
     , showTree : Bool
     , tree : String
     , qpmc : String
+    , elapsed : String
     }
 
 
 type Msg
     = Quipper Quipper.Msg
     | ShowTree Bool
-    | TransformResult (Result Http.Error Quipper.Response)
+    | TransformResult (Result Http.Error ( Quipper.Response, Time ))
 
 
 quipperCfg : Quipper.Config Model Msg
@@ -53,13 +55,14 @@ init =
         ( quipperState, quipperCmd ) =
             Quipper.init quipperCfg
     in
-        ( { quipperState = quipperState
-          , showTree = True
-          , tree = ""
-          , qpmc = ""
-          }
-        , quipperCmd
-        )
+    ( { quipperState = quipperState
+      , showTree = True
+      , tree = ""
+      , qpmc = ""
+      , elapsed = ""
+      }
+    , quipperCmd
+    )
 
 
 view : Model -> Html Msg
@@ -172,14 +175,14 @@ view model =
                         encoded =
                             Result.withDefault "" <| Base64.encode description.content
                       in
-                        href url
+                      href url
                     , attribute "download" <| basename ++ "." ++ description.extension
                     ]
                 ]
                 [ text "Download" ]
     in
-        Grid.containerFluid []
-            [ Grid.row [] rows ]
+    Grid.containerFluid []
+        [ Grid.row [] rows ]
 
 
 treeCheckbox : Model -> Html Msg
@@ -221,9 +224,9 @@ qpmcView model =
     Form.form []
         [ Form.group [] <|
             if model.showTree then
-                [ codeArea model.qpmc ]
+                [ text model.elapsed, br [] [], codeArea model.qpmc ]
             else
-                [ treeCheckbox model, codeArea model.qpmc ]
+                [ text model.elapsed, br [] [], treeCheckbox model, codeArea model.qpmc ]
         ]
 
 
@@ -246,12 +249,13 @@ update msg model =
                         Err e ->
                             toString e
             in
-                ( { model
-                    | qpmc = get .qpmc
-                    , tree = get .tree
-                  }
-                , Cmd.none
-                )
+            ( { model
+                | qpmc = get (Tuple.first >> .qpmc)
+                , elapsed = get (\( _, elapsed ) -> "Elapsed time: " ++ toString (Time.inSeconds elapsed) ++ "s")
+                , tree = get (Tuple.first >> .tree)
+              }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub Msg
