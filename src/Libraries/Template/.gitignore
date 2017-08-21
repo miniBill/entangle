@@ -1,2 +1,5 @@
 *.p_o
 *.p_hi
+*.a
+*_p.a
+*.dylib
