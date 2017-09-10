@@ -166,6 +166,7 @@ gateToMatrixParameterized size name t qs cs =
 
 data SwapType = Multiply | Single
 
+swapType :: SwapType
 swapType = Multiply --or Single
 
 -- |gateToMatrix takes the total number of qubits, an active matrix and returns the matrix needed to represent the full gate.
@@ -181,7 +182,7 @@ gateToMatrix size qs cs active =
         m = identityPlusMatrix controlCount qubitCount active
         r = size - ma
         mat = between l m r
-    in  
+    in
         case swapType of
             Multiply ->
                 let
@@ -190,7 +191,7 @@ gateToMatrix size qs cs active =
                     moving size swaps mat
             Single ->
                 let
-                    target = [1..(mi-1)] ++ wires ++ [ w | w <- [1..size], not $ w `elem` wires]
+                    target = [1..(mi-1)] ++ wires ++ [ w | w <- [1..size], w `notElem` wires]
                     swaps = swapToSingleMatrix size target
                 in
                     swaps * mat * swaps
@@ -207,10 +208,10 @@ swapToSingleMatrix size t =
             do
                 i <- [1..ddim]
                 let origin = dec2bin (i-1) ddim
-                let target = [origin !! (fromEnum $ t !! (j - 1)) | j <- [1..ddim]]
+                let target = [origin !! fromEnum (t !! (j - 1)) | j <- [1..ddim]]
                 let c = bin2dec target
                 return $ replicate c 0 ++ [1] ++ replicate (ddim - c - 1) 0
-        f r c = (s !! (downcast r)) !! (downcast c)
+        f r c = (s !! downcast r) !! downcast c
     in
         matrix dim dim f
 {-
@@ -220,18 +221,18 @@ S = zeros(2^length(T))
 for i = 1:(2^length(T))
 	origin = dec2bin(i-1,length(T)); 	% char array of the original position of the 1
 	target = dec2bin(0,length(T));		% char array of the target position of the 1 (now empty)
-	
+
 	% fill the target array doing the actual swap
 	for j = 1:length(T)
-		target(j) = origin(T(j)+1);		
+		target(j) = origin(T(j)+1);
 		% (the +1 is necessary since Matlab/Octave works in base 1)
 	end % end for
-	
-	% put the 1 in the swap matrix in the target-th row 
+
+	% put the 1 in the swap matrix in the target-th row
 	% (the +1 is necessary since Matlab/Octave works in base 1)
 	S(bin2dec(target)+1,i) = 1;
-	
-	
+
+
 end % end for
 
 -}
