@@ -6,6 +6,7 @@ module QMatrix (
     MeasureKind(..),
 
     QMatrix, QCMatrix,
+    downcast,
     kronecker, identity, matrix, zero, hadamard,
     pauliX, pauliZ, pauliY,swap, swapSqrt, phaseShift, measure,
     (<->), (<|>)
