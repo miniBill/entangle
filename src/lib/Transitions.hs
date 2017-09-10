@@ -195,8 +195,10 @@ gateToMatrix size qs cs active =
                     swaps = swapToSingleMatrix size target
                 in
                     swaps * mat * swaps
-
+bin2dec :: [Bool] -> Int
 bin2dec x = undefined
+
+dec2bin :: Int -> Int -> [Bool]
 dec2bin x = undefined
 
 swapToSingleMatrix :: QMatrix m a => QubitCount -> [QubitId] -> m a
