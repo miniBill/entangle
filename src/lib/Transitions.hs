@@ -196,10 +196,16 @@ gateToMatrix size qs cs active =
                 in
                     swaps * mat * swaps
 bin2dec :: [Bool] -> Int
-bin2dec x = undefined
+bin2dec = foldl (\p e -> p * 2 + if e then 1 else 0) 0
 
 dec2bin :: Int -> Int -> [Bool]
-dec2bin x = undefined
+dec2bin =
+    let
+        go rest 0 0   = rest
+        go rest 0 n   = replicate n False ++ rest
+        go rest n dim = undefined
+    in
+        go []
 
 swapToSingleMatrix :: QMatrix m a => QubitCount -> [QubitId] -> m a
 swapToSingleMatrix size t =
@@ -209,7 +215,7 @@ swapToSingleMatrix size t =
         s =
             do
                 i <- [1..ddim]
-                let origin = dec2bin (i-1) ddim
+                let origin = dec2bin (i - 1) ddim
                 let target = [origin !! fromEnum (t !! (j - 1)) | j <- [1..ddim]]
                 let c = bin2dec target
                 return $ replicate c 0 ++ [1] ++ replicate (ddim - c - 1) 0
