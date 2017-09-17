@@ -3,6 +3,9 @@
 
 module Transitions where
 
+import           Data.Bits
+import           Data.Sequence   hiding (length, null, replicate, reverse)
+
 import           Quipper
 import           Quipper.Circuit
 import           Quipper.Monad
@@ -195,17 +198,11 @@ gateToMatrix size qs cs active =
                     swaps = swapToSingleMatrix size target
                 in
                     swaps * mat * swaps
-bin2dec :: [Bool] -> Int
+bin2dec :: Seq Bool -> Int
 bin2dec = foldl (\p e -> p * 2 + if e then 1 else 0) 0
 
-dec2bin :: Int -> Int -> [Bool]
-dec2bin =
-    let
-        go rest 0 0   = rest
-        go rest 0 n   = replicate n False ++ rest
-        go rest n dim = undefined
-    in
-        go []
+dec2bin :: Int -> Int -> Seq Bool
+dec2bin n dim = fromFunction dim (\i -> n .&. shift 1 i == 1)
 
 swapToSingleMatrix :: QMatrix m a => QubitCount -> [QubitId] -> m a
 swapToSingleMatrix size t =
@@ -216,7 +213,7 @@ swapToSingleMatrix size t =
             do
                 i <- [1..ddim]
                 let origin = dec2bin (i - 1) ddim
-                let target = [origin !! fromEnum (t !! (j - 1)) | j <- [1..ddim]]
+                let target = fromList [origin `index` fromEnum (t !! (j - 1)) | j <- [1..ddim]]
                 let c = bin2dec target
                 return $ replicate c 0 ++ [1] ++ replicate (ddim - c - 1) 0
         f r c = (s !! downcast r) !! downcast c
