@@ -28,7 +28,8 @@ data Request = Request {
   rType      :: String,
   rCode      :: String,
   rRecursive :: Bool,
-  rKind      :: String
+  rKind      :: String,
+  rSwapType  :: String
 }
 
 instance FromJSON Request where
@@ -38,6 +39,7 @@ instance FromJSON Request where
     <*> v .: "code"
     <*> v .: "recursive"
     <*> v .: "kind"
+    <*> v .: "swapType"
 
 data Response = Response {
   rQpmc :: String,
@@ -111,7 +113,8 @@ root = do
   let treeCode = "either (\"Error: \" ++) show $ circToTree " ++ name
   let final = if rRecursive request then "recursive" else "nonrecursive"
   let kind = rKind request
-  let qpmcCode = concat ["either (\"Error: \" ++) (\\cm -> toQpmc (", show name, ", cm)) $ circMatrices ", final, " ", kind, " ",  name]
+  let swapType = rSwapType request
+  let qpmcCode = concat ["either (\"Error: \" ++) (\\cm -> toQpmc (", show name, ", cm)) $ circMatrices ", swapType, " ", final, " ", kind, " ",  name]
   r <- useHint code [treeCode, qpmcCode]
   json $ case r of
     Right [tree, qpmc] -> Response qpmc tree

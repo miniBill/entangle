@@ -24,6 +24,7 @@ type alias State =
     , output : Output
     , code : String
     , kind : Kind
+    , swapType : SwapType
     , additional : String
     , debounceState : Debounce.State
     }
@@ -32,6 +33,11 @@ type alias State =
 type Kind
     = Symbolic
     | Numeric
+
+
+type SwapType
+    = Multiply
+    | Single
 
 
 type Output
@@ -45,6 +51,7 @@ type Msg
     | Input Int
     | Output Output
     | Kind Kind
+    | SwapType SwapType
     | Additional String
     | Deb (Debounce.Msg Msg)
     | Transform
@@ -111,6 +118,9 @@ update (Config getter setter lift result) msg model =
         Additional additional ->
             trans { qmodel | additional = additional }
 
+        SwapType swapType ->
+            trans { qmodel | swapType = swapType }
+
         Deb a ->
             let
                 ( qmodel_, cmd ) =
@@ -144,6 +154,7 @@ transformCmd model =
                                 Numeric ->
                                     "numeric"
                       )
+                    , ( "swapType", Encode.string <| toString model.swapType )
                     ]
 
         decoder =
@@ -190,6 +201,7 @@ init (Config _ _ _ result) =
             , input = 1
             , output = Qubits 1
             , kind = Symbolic
+            , swapType = Multiply
             , additional = ""
             , debounceState = Debounce.init
             }
@@ -267,6 +279,7 @@ view (Config getter _ lift _) model =
 
         rowsTail =
             [ ( "Kind", kindRow )
+            , ( "Swap type", swapTypeRow )
             , ( "Function body", bodyRow )
             , ( "Additional code", additionalRow )
             , ( "Code", codeRow )
@@ -398,6 +411,25 @@ kindRow model =
     span [] <|
         Radio.radioList "kind" <|
             List.map kindToRadio kinds
+
+
+swapTypeRow : State -> Html Msg
+swapTypeRow model =
+    let
+        swapTypes =
+            [ Multiply, Single ]
+
+        swapTypeToRadio swapType =
+            Radio.create
+                [ Radio.onClick (SwapType swapType)
+                , Radio.checked <| model.swapType == swapType
+                , Radio.inline
+                ]
+                (toString swapType)
+    in
+    span [] <|
+        Radio.radioList "swapType" <|
+            List.map swapTypeToRadio swapTypes
 
 
 code : State -> String

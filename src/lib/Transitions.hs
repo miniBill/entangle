@@ -5,6 +5,7 @@ module Transitions where
 
 import           Data.Bits
 import           Data.Sequence   hiding (length, null, replicate, reverse)
+import Debug.Trace
 
 import           Quipper
 import           Quipper.Circuit
@@ -76,10 +77,10 @@ type ControlCount = QubitId
 
 -- |circMatrices takes a function returning a value in the 'Circ' monad,
 -- and calculates the list of QPMC transitions needed to represent it.
-circMatrices :: (FromDouble a, QTuple q, Show b, QCMatrix m a) => (b -> [Transition m a]) -> m a -> (q -> Circ b) -> Either String [Transitions m a]
-circMatrices final _ circ = do
+circMatrices :: (Eq a, Show a, FromDouble a, QTuple q, Show b, QCMatrix m a) => SwapType -> (b -> [Transition m a]) -> m a -> (q -> Circ b) -> Either String [Transitions m a]
+circMatrices swapType final _ circ = do
     tree <- circToTree circ
-    return $ treeToTransitions final tree
+    return $ treeToTransitions swapType final tree
 
 circToTree :: QTuple a => (a -> Circ b) -> Either String (CircTree b)
 circToTree mcirc = tree where
@@ -88,8 +89,8 @@ circToTree mcirc = tree where
     argsLength = tupleSize arg
     tree = buildTree circ argsLength
 
-treeToTransitions :: (FromDouble a, Show b, QCMatrix m a) => (b -> [Transition m a]) -> CircTree b -> [Transitions m a]
-treeToTransitions final t = go (StateName 0 []) t where
+treeToTransitions :: (Eq a, Show a, FromDouble a, Show b, QCMatrix m a) => SwapType -> (b -> [Transition m a]) -> CircTree b -> [Transitions m a]
+treeToTransitions swapType final t = go (StateName 0 []) t where
     wires :: [QubitId]
     wires = getWires t
     qubit_max :: QubitId
@@ -103,7 +104,7 @@ treeToTransitions final t = go (StateName 0 []) t where
                 else [Transitions sn f]
     go sn@(StateName i bs) (GateNode name qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
-        mat = gateToMatrixNoParam qubit_max name qs cts
+        mat = gateToMatrixNoParam swapType qubit_max name qs cts
         state' = StateName (succ i) bs
     go sn@(StateName i bs) (ResetNode qi c) =
         let
@@ -125,7 +126,7 @@ treeToTransitions final t = go (StateName 0 []) t where
             Transitions sn [lt, rt] : Transitions ls [it] : Transitions rs [nt] : go state' c
     go sn@(StateName i bs) (ParameterizedGateNode name k qs cts c) = Transitions sn [tr] : go state' c where
         tr = Transition (Just mat) state'
-        mat = gateToMatrixParameterized qubit_max name k qs cts
+        mat = gateToMatrixParameterized swapType qubit_max name k qs cts
         state' = StateName (succ i) bs
     go sn@(StateName i bs) (MeasureNode qi _ l r) = Transitions sn [lt, rt] : go ls l ++ go rs r where
         lmat = between (pred qi) (QMatrix.measure UL) (qubit_max - qi)
@@ -152,29 +153,26 @@ sw q t x | x == q = t
          | otherwise = x
 
 -- |gateToMatrixNoParam takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrixNoParam :: QCMatrix m a => QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
-gateToMatrixNoParam size name qs cs =
+gateToMatrixNoParam :: (Eq a, Show a, QCMatrix m a) => SwapType -> QubitCount -> String -> [QubitId] -> [QubitId] -> m (Complex a)
+gateToMatrixNoParam swapType size name qs cs =
     let
         active = GatesMatrices.nameToMatrix name
     in
-        gateToMatrix size qs cs active
+        gateToMatrix swapType size qs cs active
 
 -- |gateToMatrixParameterized takes the total number of qubits, a gate data and returns the matrix needed to represent it.
-gateToMatrixParameterized :: (FromDouble a, QCMatrix m a) => QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
-gateToMatrixParameterized size name t qs cs =
+gateToMatrixParameterized :: (Eq a, Show a, FromDouble a, QCMatrix m a) => SwapType -> QubitCount -> String -> Double -> [QubitId] -> [QubitId] -> m (Complex a)
+gateToMatrixParameterized swapType size name t qs cs =
     let
         active = GatesMatrices.nameToMatrixParameterized name t
     in
-        gateToMatrix size qs cs active
+        gateToMatrix swapType size qs cs active
 
 data SwapType = Multiply | Single
 
-swapType :: SwapType
-swapType = Multiply --or Single
-
 -- |gateToMatrix takes the total number of qubits, an active matrix and returns the matrix needed to represent the full gate.
-gateToMatrix :: QMatrix m a => QubitCount -> [QubitId] -> [QubitId] -> m a -> m a
-gateToMatrix size qs cs active =
+gateToMatrix :: (Show a, QMatrix m a) => SwapType -> QubitCount -> [QubitId] -> [QubitId] -> m a -> m a
+gateToMatrix swapType size qs cs active =
     let
         wires = cs ++ qs
         mi = minimum wires
@@ -194,8 +192,8 @@ gateToMatrix size qs cs active =
                     moving size swaps mat
             Single ->
                 let
-                    target = [1..(mi-1)] ++ wires ++ [ w | w <- [1..size], w `notElem` wires]
-                    swaps = swapToSingleMatrix size target
+                    target = trace ("size: " ++ show size ++ " range: " ++ show [(mi+1)..size]) $ [1..(mi-1)] ++ wires ++ [ w | w <- [(mi+1)..size], w `notElem` wires]
+                    swaps = trace ("target: " ++ show target) $ swapToSingleMatrix size target
                 in
                     swaps * mat * swaps
 bin2dec :: Seq Bool -> Int
@@ -204,23 +202,27 @@ bin2dec = foldl (\p e -> p * 2 + if e then 1 else 0) 0
 dec2bin :: Int -> Int -> Seq Bool
 dec2bin n dim = fromFunction dim (\i -> n .&. shift 1 i == 1)
 
-swapToSingleMatrix :: QMatrix m a => QubitCount -> [QubitId] -> m a
+swapToSingleMatrix :: (Show a, QMatrix m a) => QubitCount -> [QubitId] -> m a
 swapToSingleMatrix size t =
     let
         dim = toSize size
-        ddim = downcast dim
+        ddim = fromEnum size
+        pdim = trace ("dim: "++ show dim) $ downcast dim
         s =
             do
-                i <- [1..ddim]
-                let origin = dec2bin (i - 1) ddim
-                let target = fromList [origin `index` fromEnum (t !! (j - 1)) | j <- [1..ddim]]
+                i <- [1..pdim]
+                let origin = dec2bin (i - 1) pdim
+                let target = fromList $ do
+                    j <- [1..ddim]
+                    let tj = t !! (j - 1)
+                    return $ index origin (fromEnum tj - 1)
                 let c = bin2dec target
-                return $ replicate c 0 ++ [1] ++ replicate (ddim - c - 1) 0
-        f r c = (s !! downcast r) !! downcast c
+                return $ replicate c 0 ++ [1] ++ replicate (pdim - c - 1) 0
+        f = traceShow s $ \ r c -> (s !! (downcast r - 1)) !! (downcast c - 1)
     in
         matrix dim dim f
-{-
 
+{-
 S = zeros(2^length(T))
 
 for i = 1:(2^length(T))
@@ -236,10 +238,7 @@ for i = 1:(2^length(T))
 	% put the 1 in the swap matrix in the target-th row
 	% (the +1 is necessary since Matlab/Octave works in base 1)
 	S(bin2dec(target)+1,i) = 1;
-
-
 end % end for
-
 -}
 
 -- |generateSwaps takes a finite list of source qubits, a list of target qubits,

@@ -13595,51 +13595,34 @@ var _truqu$elm_base64$Base64$toCharList = function (bitList) {
 	};
 	return A2(_elm_lang$core$List$concatMap, toChars, bitList);
 };
-var _truqu$elm_base64$Base64$toTupleList = function () {
-	var toTupleListHelp = F2(
-		function (acc, list) {
-			toTupleListHelp:
-			while (true) {
-				var _p6 = list;
-				if (_p6.ctor === '::') {
-					if (_p6._1.ctor === '::') {
-						if (_p6._1._1.ctor === '::') {
-							var _v5 = {
-								ctor: '::',
-								_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: _p6._1._1._0},
-								_1: acc
-							},
-								_v6 = _p6._1._1._1;
-							acc = _v5;
-							list = _v6;
-							continue toTupleListHelp;
-						} else {
-							return {
-								ctor: '::',
-								_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: -1},
-								_1: acc
-							};
-						}
-					} else {
-						return {
-							ctor: '::',
-							_0: {ctor: '_Tuple3', _0: _p6._0, _1: -1, _2: -1},
-							_1: acc
-						};
-					}
-				} else {
-					return acc;
-				}
+var _truqu$elm_base64$Base64$toTupleList = function (list) {
+	var _p6 = list;
+	if (_p6.ctor === '::') {
+		if (_p6._1.ctor === '::') {
+			if (_p6._1._1.ctor === '::') {
+				return {
+					ctor: '::',
+					_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: _p6._1._1._0},
+					_1: _truqu$elm_base64$Base64$toTupleList(_p6._1._1._1)
+				};
+			} else {
+				return {
+					ctor: '::',
+					_0: {ctor: '_Tuple3', _0: _p6._0, _1: _p6._1._0, _2: -1},
+					_1: {ctor: '[]'}
+				};
 			}
-		});
-	return function (_p7) {
-		return _elm_lang$core$List$reverse(
-			A2(
-				toTupleListHelp,
-				{ctor: '[]'},
-				_p7));
-	};
-}();
+		} else {
+			return {
+				ctor: '::',
+				_0: {ctor: '_Tuple3', _0: _p6._0, _1: -1, _2: -1},
+				_1: {ctor: '[]'}
+			};
+		}
+	} else {
+		return {ctor: '[]'};
+	}
+};
 var _truqu$elm_base64$Base64$toCodeList = function (string) {
 	return A2(
 		_elm_lang$core$List$map,
@@ -13872,7 +13855,16 @@ var _user$project$Quipper$transformCmd = function (model) {
 											}
 										}())
 								},
-								_1: {ctor: '[]'}
+								_1: {
+									ctor: '::',
+									_0: {
+										ctor: '_Tuple2',
+										_0: 'swapType',
+										_1: _elm_lang$core$Json_Encode$string(
+											_elm_lang$core$Basics$toString(model.swapType))
+									},
+									_1: {ctor: '[]'}
+								}
 							}
 						}
 					}
@@ -13900,9 +13892,9 @@ var _user$project$Quipper$transformCmd = function (model) {
 			},
 			_elm_lang$core$Time$now));
 };
-var _user$project$Quipper$State = F7(
-	function (a, b, c, d, e, f, g) {
-		return {functionName: a, input: b, output: c, code: d, kind: e, additional: f, debounceState: g};
+var _user$project$Quipper$State = F8(
+	function (a, b, c, d, e, f, g, h) {
+		return {functionName: a, input: b, output: c, code: d, kind: e, swapType: f, additional: g, debounceState: h};
 	});
 var _user$project$Quipper$Response = F2(
 	function (a, b) {
@@ -13910,6 +13902,8 @@ var _user$project$Quipper$Response = F2(
 	});
 var _user$project$Quipper$Numeric = {ctor: 'Numeric'};
 var _user$project$Quipper$Symbolic = {ctor: 'Symbolic'};
+var _user$project$Quipper$Single = {ctor: 'Single'};
+var _user$project$Quipper$Multiply = {ctor: 'Multiply'};
 var _user$project$Quipper$Qubits = function (a) {
 	return {ctor: 'Qubits', _0: a};
 };
@@ -13933,6 +13927,7 @@ var _user$project$Quipper$init = function (_p5) {
 		input: 1,
 		output: _user$project$Quipper$Qubits(1),
 		kind: _user$project$Quipper$Symbolic,
+		swapType: _user$project$Quipper$Multiply,
 		additional: '',
 		debounceState: _bcardiff$elm_debounce$Debounce$init
 	};
@@ -14013,6 +14008,11 @@ var _user$project$Quipper$update = F3(
 					_elm_lang$core$Native_Utils.update(
 						qmodel,
 						{additional: _p9._0}));
+			case 'SwapType':
+				return trans(
+					_elm_lang$core$Native_Utils.update(
+						qmodel,
+						{swapType: _p9._0}));
 			case 'Deb':
 				var _p10 = A3(_bcardiff$elm_debounce$Debounce$update, _user$project$Quipper$debounceCfg, _p9._0, qmodel);
 				var qmodel_ = _p10._0;
@@ -14060,6 +14060,47 @@ var _user$project$Quipper$additionalRow = function (model) {
 				}
 			}
 		});
+};
+var _user$project$Quipper$SwapType = function (a) {
+	return {ctor: 'SwapType', _0: a};
+};
+var _user$project$Quipper$swapTypeRow = function (model) {
+	var swapTypeToRadio = function (swapType) {
+		return A2(
+			_rundis$elm_bootstrap$Bootstrap_Form_Radio$create,
+			{
+				ctor: '::',
+				_0: _rundis$elm_bootstrap$Bootstrap_Form_Radio$onClick(
+					_user$project$Quipper$SwapType(swapType)),
+				_1: {
+					ctor: '::',
+					_0: _rundis$elm_bootstrap$Bootstrap_Form_Radio$checked(
+						_elm_lang$core$Native_Utils.eq(model.swapType, swapType)),
+					_1: {
+						ctor: '::',
+						_0: _rundis$elm_bootstrap$Bootstrap_Form_Radio$inline,
+						_1: {ctor: '[]'}
+					}
+				}
+			},
+			_elm_lang$core$Basics$toString(swapType));
+	};
+	var swapTypes = {
+		ctor: '::',
+		_0: _user$project$Quipper$Multiply,
+		_1: {
+			ctor: '::',
+			_0: _user$project$Quipper$Single,
+			_1: {ctor: '[]'}
+		}
+	};
+	return A2(
+		_elm_lang$html$Html$span,
+		{ctor: '[]'},
+		A2(
+			_rundis$elm_bootstrap$Bootstrap_Form_Radio$radioList,
+			'swapType',
+			A2(_elm_lang$core$List$map, swapTypeToRadio, swapTypes)));
 };
 var _user$project$Quipper$Kind = function (a) {
 	return {ctor: 'Kind', _0: a};
@@ -14228,14 +14269,18 @@ var _user$project$Quipper$view = F2(
 			_0: {ctor: '_Tuple2', _0: 'Kind', _1: _user$project$Quipper$kindRow},
 			_1: {
 				ctor: '::',
-				_0: {ctor: '_Tuple2', _0: 'Function body', _1: _user$project$Quipper$bodyRow},
+				_0: {ctor: '_Tuple2', _0: 'Swap type', _1: _user$project$Quipper$swapTypeRow},
 				_1: {
 					ctor: '::',
-					_0: {ctor: '_Tuple2', _0: 'Additional code', _1: _user$project$Quipper$additionalRow},
+					_0: {ctor: '_Tuple2', _0: 'Function body', _1: _user$project$Quipper$bodyRow},
 					_1: {
 						ctor: '::',
-						_0: {ctor: '_Tuple2', _0: 'Code', _1: _user$project$Quipper$codeRow},
-						_1: {ctor: '[]'}
+						_0: {ctor: '_Tuple2', _0: 'Additional code', _1: _user$project$Quipper$additionalRow},
+						_1: {
+							ctor: '::',
+							_0: {ctor: '_Tuple2', _0: 'Code', _1: _user$project$Quipper$codeRow},
+							_1: {ctor: '[]'}
+						}
 					}
 				}
 			}
