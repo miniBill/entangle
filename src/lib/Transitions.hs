@@ -5,7 +5,8 @@ module Transitions where
 
 import           Data.Bits
 import           Data.Sequence   hiding (length, null, replicate, reverse)
-import Debug.Trace
+import qualified Data.Sequence   as DS
+import           Debug.Trace
 
 import           Quipper
 import           Quipper.Circuit
@@ -202,23 +203,27 @@ bin2dec = foldl (\p e -> p * 2 + if e then 1 else 0) 0
 dec2bin :: Int -> Int -> Seq Bool
 dec2bin n dim = fromFunction dim (\i -> n .&. shift 1 i == 1)
 
+seqEnum :: Enum a => a -> a -> Seq a
+seqEnum f t = fromList [f..t]
+
 swapToSingleMatrix :: (Show a, QMatrix m a) => QubitCount -> [QubitId] -> m a
 swapToSingleMatrix size t =
     let
         dim = toSize size
         ddim = fromEnum size
         pdim = trace ("dim: "++ show dim) $ downcast dim
+        toTarget origin =  do
+            j <- seqEnum 1 ddim
+            let tj = t !! (j - 1)
+            return $ index origin (fromEnum tj - 1)
         s =
             do
-                i <- [1..pdim]
+                i <- seqEnum 1 pdim
                 let origin = dec2bin (i - 1) pdim
-                let target = fromList $ do
-                    j <- [1..ddim]
-                    let tj = t !! (j - 1)
-                    return $ index origin (fromEnum tj - 1)
+                let target = toTarget origin
                 let c = bin2dec target
-                return $ replicate c 0 ++ [1] ++ replicate (pdim - c - 1) 0
-        f = traceShow s $ \ r c -> (s !! (downcast r - 1)) !! (downcast c - 1)
+                return $ DS.replicate c 0 >< DS.singleton 1 >< DS.replicate (pdim - c - 1) 0
+        f = traceShow s $ \ r c -> (s `index` (downcast r - 1)) `index` (downcast c - 1)
     in
         matrix dim dim f
 
