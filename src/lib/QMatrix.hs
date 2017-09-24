@@ -21,14 +21,14 @@ data MeasureKind = UL | BR
 class (Num a, Num (m a)) => QMatrix m a where
     -- |kronecker is the Kronecker product
     kronecker :: m a -> m a -> m a
-    matrix :: Integer -> Integer -> (Integer -> Integer -> a) -> m a
+    matrix :: Int -> Int -> (Int -> Int -> a) -> m a
     (<->) :: m a -> m a -> m a
     (<|>) :: m a -> m a -> m a
 
-    zero :: Integer -> Integer -> m a
+    zero :: Int -> Int -> m a
     zero r c = matrix r c $ \_ _ -> 0
 
-    identity :: Integer -> m a
+    identity :: Int -> m a
     identity n = matrix n n $ \r c -> if r == c then 1 else 0
 
     -- |hadamard is the matrix for the Hadamard gate
@@ -85,7 +85,7 @@ class (Fractional a, Floating a, QMatrix m (Complex a)) => QCMatrix m a where
         swapSqrtMatrix 4 4 = 1
         swapSqrtMatrix _ _ = 0
 
-    -- |pauliY is the Pauli Y matrix 
+    -- |pauliY is the Pauli Y matrix
     pauliY :: m (Complex a)
     pauliY = matrix 2 2 pauliYMatrix where
         pauliYMatrix 1 2 = -ii
@@ -121,11 +121,11 @@ instance Num a => QMatrix Matrix a where
         in
             Data.Matrix.matrix (ra * rb) (ca * cb) gen
 
-    identity = Data.Matrix.identity . downcast
+    identity = Data.Matrix.identity
 
-    zero r c = Data.Matrix.zero (downcast r) (downcast c)
+    zero = Data.Matrix.zero
 
-    matrix r c f = Data.Matrix.matrix (downcast r) (downcast c) (\(y, x) -> f (fromIntegral y) (fromIntegral x))
+    matrix r c f = Data.Matrix.matrix r c (uncurry f)
 
     (<->) = (Data.Matrix.<->)
 

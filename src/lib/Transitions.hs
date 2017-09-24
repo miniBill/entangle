@@ -211,7 +211,7 @@ swapToSingleMatrix size t =
     let
         dim = toSize size
         ddim = fromEnum size
-        pdim = trace ("dim: "++ show dim) $ downcast dim
+        pdim = trace ("dim: "++ show dim) dim
         toTarget origin =  do
             j <- seqEnum 1 ddim
             let tj = t !! (j - 1)
@@ -223,7 +223,7 @@ swapToSingleMatrix size t =
                 let target = toTarget origin
                 let c = bin2dec target
                 return $ DS.replicate c 0 >< DS.singleton 1 >< DS.replicate (pdim - c - 1) 0
-        f = traceShow s $ \ r c -> (s `index` (downcast r - 1)) `index` (downcast c - 1)
+        f = traceShow s $ \ r c -> (s `index` (r - 1)) `index` (c - 1)
     in
         matrix dim dim f
 

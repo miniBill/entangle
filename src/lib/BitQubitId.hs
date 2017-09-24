@@ -46,5 +46,5 @@ instance Enum BitId where
     fromEnum (BitId i) = i
     toEnum = bitId
 
-toSize :: QubitId -> Integer
+toSize :: QubitId -> Int
 toSize (QubitId i) = 2 ^ i

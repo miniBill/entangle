@@ -15,7 +15,7 @@ import           Complex
 import           QMatrix
 
 data StandardMatrix a where
-    Identity :: Integer -> StandardMatrix a
+    Identity :: Int -> StandardMatrix a
     Hadamard :: StandardMatrix a
     PauliX :: StandardMatrix a
     PauliZ :: StandardMatrix a
@@ -27,8 +27,8 @@ data StandardMatrix a where
 
 data SymbolicMatrix a
     = StandardMatrix (StandardMatrix a)
-    | Zero Integer Integer
-    | Matrix Integer Integer (Integer -> Integer -> a)
+    | Zero Int Int
+    | Matrix Int Int (Int -> Int -> a)
     | Multiply (SymbolicMatrix a) (SymbolicMatrix a)
     | Kronecker (SymbolicMatrix a) (SymbolicMatrix a)
 
@@ -101,7 +101,7 @@ instance Floating a => QMatrix SymbolicMatrix a where
     swap = StandardMatrix Swap
     measure = StandardMatrix . Measure
 
-data ExplodedMatrix a = ExplodedMatrix Integer Integer (Integer -> Integer -> a)
+data ExplodedMatrix a = ExplodedMatrix Int Int (Int -> Int -> a)
 
 instance Floating a => QMatrix ExplodedMatrix a where
     matrix = ExplodedMatrix
@@ -134,9 +134,9 @@ instance Num a => Num (ExplodedMatrix a) where
     fromInteger = error "fromInteger undefined for ExplodedMatrix"
 
 liftEval :: Floating a =>
-    (Integer -> Integer -> Integer) ->
-    (Integer -> Integer -> Integer) ->
-    (ExplodedMatrix a -> ExplodedMatrix a -> Integer -> Integer -> a) ->
+    (Int -> Int -> Int) ->
+    (Int -> Int -> Int) ->
+    (ExplodedMatrix a -> ExplodedMatrix a -> Int -> Int -> a) ->
     (SymbolicMatrix a -> SymbolicMatrix a -> SymbolicMatrix a)
 liftEval rf cf vf a b =
     let
@@ -147,9 +147,9 @@ liftEval rf cf vf a b =
         Matrix (rf ra rb) (cf ca cb) f
 
 liftEvalE :: QMatrix m a =>
-    (Integer -> Integer -> Integer) ->
-    (Integer -> Integer -> Integer) ->
-    (ExplodedMatrix a -> ExplodedMatrix a -> Integer -> Integer -> a) ->
+    (Int -> Int -> Int) ->
+    (Int -> Int -> Int) ->
+    (ExplodedMatrix a -> ExplodedMatrix a -> Int -> Int -> a) ->
     (ExplodedMatrix a -> ExplodedMatrix a -> m a)
 liftEvalE rf cf vf xa@(ExplodedMatrix ra ca _) xb@(ExplodedMatrix rb cb _) =
     let
