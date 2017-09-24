@@ -6,7 +6,6 @@ module QMatrix (
     MeasureKind(..),
 
     QMatrix, QCMatrix,
-    downcast,
     kronecker, identity, matrix, zero, hadamard,
     pauliX, pauliZ, pauliY,swap, swapSqrt, phaseShift, measure,
     (<->), (<|>)
@@ -97,12 +96,6 @@ class (Fractional a, Floating a, QMatrix m (Complex a)) => QCMatrix m a where
         phaseShiftMatrix 1 1 = 1
         phaseShiftMatrix 2 2 = exp $ ii * (phi :+ 0)
         phaseShiftMatrix _ _ = 0
-
-
-downcast :: Integer -> Int
-downcast x
-    | x > fromIntegral (maxBound :: Int) = error "Overflow!"
-    | otherwise = fromIntegral x
 
 instance Num a => QMatrix Matrix a where
     kronecker a b =
