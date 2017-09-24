@@ -185,7 +185,7 @@ gateToMatrix swapType size qs cs active =
         r = size - ma
         mat = between l m r
     in
-        case swapType of
+        trace ("wires: " ++ show wires) $ case swapType of
             Multiply ->
                 let
                     swaps = reverse $ generateSwaps wires [mi..]
@@ -198,10 +198,10 @@ gateToMatrix swapType size qs cs active =
                 in
                     swaps * mat * swaps
 bin2dec :: Seq Bool -> Int
-bin2dec = foldl (\p e -> p * 2 + if e then 1 else 0) 0
+bin2dec = foldr (\e p -> p * 2 + if e then 1 else 0) 0
 
 dec2bin :: Int -> Int -> Seq Bool
-dec2bin n dim = fromFunction dim (\i -> n .&. shift 1 i == 1)
+dec2bin n dim = fromFunction dim (\i -> n .&. shift 1 i == shift 1 i)
 
 seqEnum :: Enum a => a -> a -> Seq a
 seqEnum f t = fromList [f..t]
@@ -209,20 +209,23 @@ seqEnum f t = fromList [f..t]
 swapToSingleMatrix :: (Show a, QMatrix m a) => QubitCount -> [QubitId] -> m a
 swapToSingleMatrix size t =
     let
-        dim = toSize size
+        dim = let r = toSize size in trace ("dim: "++ show r) r
         ddim = fromEnum size
-        pdim = trace ("dim: "++ show dim) dim
-        toTarget origin =  do
-            j <- seqEnum 1 ddim
-            let tj = t !! (j - 1)
-            return $ index origin (fromEnum tj - 1)
+        toTarget origin =
+            let
+                result = do
+                    j <- seqEnum 1 ddim
+                    let tj = t !! (j - 1)
+                    return $ index origin (fromEnum tj - 1)
+            in
+                trace ("toTarget " ++ show origin ++ " -> " ++ show result) result
         s =
             do
-                i <- seqEnum 1 pdim
-                let origin = dec2bin (i - 1) pdim
+                i <- seqEnum 1 dim
+                let origin = dec2bin (i - 1) ddim
                 let target = toTarget origin
                 let c = bin2dec target
-                return $ DS.replicate c 0 >< DS.singleton 1 >< DS.replicate (pdim - c - 1) 0
+                return $ DS.replicate c 0 >< DS.singleton 1 >< DS.replicate (dim - c - 1) 0
         f = traceShow s $ \ r c -> (s `index` (r - 1)) `index` (c - 1)
     in
         matrix dim dim f
